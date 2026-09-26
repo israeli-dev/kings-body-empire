@@ -1,0 +1,159 @@
+// Kings Body Empire — Prisma schema
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  COACH
+  ADMIN
+}
+
+enum Rank {
+  BRONZE
+  SILVER
+  GOLD
+  DIAMOND
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model User {
+  id               String             @id @default(cuid())
+  name             String
+  email            String             @unique
+  passwordHash     String
+  role             Role               @default(CLIENT)
+  rank             Rank               @default(BRONZE)
+  createdAt        DateTime           @default(now())
+
+  workoutLogs      WorkoutLog[]
+  foodLogs         FoodLog[]
+  measurementLogs  MeasurementLog[]
+  packagePurchases PackagePurchase[]
+  bookPurchases    BookPurchase[]
+  callBookings     CallBooking[]
+}
+
+// Feature 1: workout tracking
+model WorkoutLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  exercise  String
+  sets      Int
+  reps      Int
+  weightKg  Float?
+  loggedAt  DateTime @default(now())
+}
+
+// Feature 2: food logging — date & time are server-set, never client-supplied
+model FoodLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  description String
+  calories    Int?
+  loggedAt    DateTime @default(now())
+}
+
+// Feature 3: body measurements
+model MeasurementLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  weightKg   Float?
+  heightCm   Float?
+  waistCm    Float?
+  shoulderCm Float?
+  chestCm    Float?
+  armCm      Float?
+  loggedAt   DateTime @default(now())
+}
+
+// Feature 6: coaching packages ("Work With Us")
+model Package {
+  id              String            @id @default(cuid())
+  title           String
+  slug            String            @unique
+  description     String
+  durationWeeks   Int
+  priceKobo       Int
+  previewVideoUrl String?
+  contents        String[]
+  purchases       PackagePurchase[]
+}
+
+model PackagePurchase {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  packageId   String
+  package     Package       @relation(fields: [packageId], references: [id])
+  amountKobo  Int
+  paystackRef String        @unique
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+}
+
+// Feature 7: e-books
+model Book {
+  id        String         @id @default(cuid())
+  title     String
+  slug      String         @unique
+  priceKobo Int
+  fileUrl   String
+  coverUrl  String?
+  purchases BookPurchase[]
+}
+
+model BookPurchase {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  bookId      String
+  book        Book          @relation(fields: [bookId], references: [id])
+  amountKobo  Int
+  paystackRef String        @unique
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+}
+
+// Feature 8: education library
+model EducationContent {
+  id           String   @id @default(cuid())
+  title        String
+  category     String   // Diet | Workout | Fat Loss | Bulking | Rest
+  videoUrl     String
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+}
+
+// Feature 5: fitness call booking
+model CoachAvailability {
+  id        String       @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  isBooked  Boolean      @default(false)
+  booking   CallBooking?
+}
+
+model CallBooking {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  slotId    String            @unique
+  slot      CoachAvailability @relation(fields: [slotId], references: [id])
+  createdAt DateTime          @default(now())
+}
