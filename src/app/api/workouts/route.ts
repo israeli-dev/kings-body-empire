@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { recalculateRank } from "@/lib/rank";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -21,14 +22,10 @@ export async function POST(req: Request) {
   if (!exercise || !sets || !reps) {
     return NextResponse.json({ error: "Exercise, sets and reps are required" }, { status: 400 });
   }
+  const userId = (session.user as any).id;
   const log = await prisma.workoutLog.create({
-    data: {
-      userId: (session.user as any).id,
-      exercise,
-      sets: Number(sets),
-      reps: Number(reps),
-      weightKg: weightKg ? Number(weightKg) : null,
-    },
+    data: { userId, exercise, sets: Number(sets), reps: Number(reps), weightKg: weightKg ? Number(weightKg) : null },
   });
+  await recalculateRank(userId);
   return NextResponse.json(log);
 }
