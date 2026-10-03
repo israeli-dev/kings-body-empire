@@ -25,6 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Link href="/workouts">Workouts</Link>
         <Link href="/food">Food</Link>
         <Link href="/measurements">Measurements</Link>
+        <Link href="/book-call">Book a Call</Link>
         {rank && (
           <span
             style={{
