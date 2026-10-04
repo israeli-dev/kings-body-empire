@@ -1,6 +1,3 @@
-// Kings Body Empire — Prisma schema
-// Run: npx prisma migrate dev --name init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -46,7 +43,6 @@ model User {
   callBookings     CallBooking[]
 }
 
-// Feature 1: workout tracking
 model WorkoutLog {
   id        String   @id @default(cuid())
   userId    String
@@ -58,7 +54,6 @@ model WorkoutLog {
   loggedAt  DateTime @default(now())
 }
 
-// Feature 2: food logging — date & time are server-set, never client-supplied
 model FoodLog {
   id          String   @id @default(cuid())
   userId      String
@@ -68,7 +63,6 @@ model FoodLog {
   loggedAt    DateTime @default(now())
 }
 
-// Feature 3: body measurements
 model MeasurementLog {
   id         String   @id @default(cuid())
   userId     String
@@ -82,7 +76,6 @@ model MeasurementLog {
   loggedAt   DateTime @default(now())
 }
 
-// Feature 6: coaching packages ("Work With Us")
 model Package {
   id              String            @id @default(cuid())
   title           String
@@ -107,7 +100,6 @@ model PackagePurchase {
   createdAt   DateTime      @default(now())
 }
 
-// Feature 7: e-books
 model Book {
   id        String         @id @default(cuid())
   title     String
@@ -130,17 +122,15 @@ model BookPurchase {
   createdAt   DateTime      @default(now())
 }
 
-// Feature 8: education library
 model EducationContent {
   id           String   @id @default(cuid())
   title        String
-  category     String   // Diet | Workout | Fat Loss | Bulking | Rest
+  category     String
   videoUrl     String
   thumbnailUrl String?
   createdAt    DateTime @default(now())
 }
 
-// Feature 5: fitness call booking
 model CoachAvailability {
   id        String       @id @default(cuid())
   startTime DateTime
@@ -155,5 +145,6 @@ model CallBooking {
   user      User              @relation(fields: [userId], references: [id])
   slotId    String            @unique
   slot      CoachAvailability @relation(fields: [slotId], references: [id])
+  phone     String?
   createdAt DateTime          @default(now())
 }

@@ -3,16 +3,22 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
 type Slot = { id: string; startTime: string; endTime: string };
-type Booking = { id: string; slot: Slot };
+type Booking = {
+  id: string;
+  phone: string | null;
+  slot: Slot;
+  user?: { name: string; email: string };
+};
 
 export default function BookCallPage() {
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
 
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [myBookings, setMyBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -22,7 +28,7 @@ export default function BookCallPage() {
   }
   async function loadBookings() {
     const res = await fetch("/api/bookings");
-    if (res.ok) setMyBookings(await res.json());
+    if (res.ok) setBookings(await res.json());
   }
   useEffect(() => { loadSlots(); loadBookings(); }, []);
 
@@ -45,10 +51,14 @@ export default function BookCallPage() {
 
   async function handleBook(slotId: string) {
     setError(""); setMessage("");
+    if (!phone.trim()) {
+      setError("Enter a phone number before booking, so the coach can reach you.");
+      return;
+    }
     const res = await fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slotId }),
+      body: JSON.stringify({ slotId, phone }),
     });
     if (!res.ok) {
       const data = await res.json();
@@ -61,7 +71,7 @@ export default function BookCallPage() {
   }
 
   return (
-    <main style={{ maxWidth: 640, margin: "40px auto", padding: 24 }}>
+    <main style={{ maxWidth: 680, margin: "40px auto", padding: 24 }}>
       <h1>Book a Fitness Call</h1>
 
       {isAdmin && (
@@ -75,6 +85,18 @@ export default function BookCallPage() {
         </section>
       )}
 
+      {!isAdmin && (
+        <div style={{ marginTop: 24 }}>
+          <label style={{ fontSize: 13, color: "#999" }}>Your phone number (used for this booking)</label>
+          <input
+            placeholder="e.g. 0803 123 4567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            style={{ display: "block", marginTop: 6, width: "100%" }}
+          />
+        </div>
+      )}
+
       {error && <p style={{ color: "red", marginTop: 16 }}>{error}</p>}
       {message && <p style={{ color: "limegreen", marginTop: 16 }}>{message}</p>}
 
@@ -83,20 +105,25 @@ export default function BookCallPage() {
         {slots.map((slot) => (
           <li key={slot.id} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #333", padding: "10px 0" }}>
             <span>{new Date(slot.startTime).toLocaleString()} – {new Date(slot.endTime).toLocaleTimeString()}</span>
-            <button onClick={() => handleBook(slot.id)}>Book</button>
+            {!isAdmin && <button onClick={() => handleBook(slot.id)}>Book</button>}
           </li>
         ))}
         {slots.length === 0 && <p style={{ color: "#999" }}>No open slots right now — check back soon.</p>}
       </ul>
 
-      <h2 style={{ marginTop: 32 }}>Your bookings</h2>
+      <h2 style={{ marginTop: 32 }}>{isAdmin ? "All upcoming calls" : "Your bookings"}</h2>
       <ul style={{ listStyle: "none", padding: 0, marginTop: 10 }}>
-        {myBookings.map((b) => (
+        {bookings.map((b) => (
           <li key={b.id} style={{ borderBottom: "1px solid #333", padding: "10px 0" }}>
             {new Date(b.slot.startTime).toLocaleString()}
+            {isAdmin && b.user && (
+              <div style={{ fontSize: 13, color: "#999" }}>
+                {b.user.name} · {b.user.email} · {b.phone || "no phone given"}
+              </div>
+            )}
           </li>
         ))}
-        {myBookings.length === 0 && <p style={{ color: "#999" }}>No calls booked yet.</p>}
+        {bookings.length === 0 && <p style={{ color: "#999" }}>{isAdmin ? "No calls booked yet." : "No calls booked yet."}</p>}
       </ul>
     </main>
   );
