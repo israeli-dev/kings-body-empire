@@ -21,10 +21,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div>
-      <nav style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, borderBottom: "1px solid #333" }}>
+      <nav style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, borderBottom: "1px solid #333", flexWrap: "wrap" }}>
         <Link href="/workouts">Workouts</Link>
         <Link href="/food">Food</Link>
         <Link href="/measurements">Measurements</Link>
+        <Link href="/education">Education</Link>
         <Link href="/book-call">Book a Call</Link>
         {rank && (
           <span
