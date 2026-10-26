@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/workouts", label: "Workouts" },
   { href: "/food", label: "Food" },
   { href: "/measurements", label: "Measurements" },
+  { href: "/progress", label: "Progress" },
   { href: "/education", label: "Education" },
   { href: "/book-call", label: "Book a call" },
 ];

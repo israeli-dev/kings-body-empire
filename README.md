@@ -379,6 +379,34 @@ the database, so it never needs editing. Want to sell a program without showing 
 Set `Package.isActive = false` in Studio — it disappears from `/pricing` and
 checkout, but existing purchases stay valid.
 
+## Progress charts
+
+`/progress` (linked from the dashboard nav) draws weight, weekly training
+volume, daily calories and a consistency heatmap from logs the client already
+keeps. There is no chart library: `src/components/progress-charts.tsx` renders
+inline SVG on the server, so the page needs no client JavaScript and stays light
+on mobile data.
+
+| Piece | Where |
+| --- | --- |
+| Aggregation (pure, unit tested) | `src/lib/progress-core.ts` |
+| Database + payload | `src/lib/progress.ts` |
+| JSON API | `GET /api/progress?range=30\|90` |
+| Page | `src/app/(dashboard)/progress/page.tsx` |
+
+Rules worth knowing:
+
+- Days are grouped in `NEXT_PUBLIC_TIMEZONE` (`Africa/Lagos`), so a 10pm
+  session counts as today.
+- Weight keeps **one point per day** (the last reading wins) so seven weigh-ins
+  on one day do not look like seven days of progress.
+- Training volume is `sets × reps × load`; bodyweight sets count as
+  `sets × reps` so press-ups are not invisible.
+- The calorie average uses logged days only — a day you forgot to log does not
+  pretend you ate nothing.
+- The `activity` array is one cell per day in the range, which is exactly what
+  the heatmap draws.
+
 ## Testing
 
 See **[docs/TESTING.md](docs/TESTING.md)** for a click-through checklist that

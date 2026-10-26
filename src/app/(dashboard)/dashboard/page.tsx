@@ -133,6 +133,9 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <RankBadge rank={(user.rank as RankName) ?? overview.rank} />
+          <Link href="/progress" className="btn-secondary btn-sm">
+            Progress
+          </Link>
           {isAdmin && (
             <Link href="/admin" className="btn-secondary btn-sm">Admin</Link>
           )}

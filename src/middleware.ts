@@ -14,6 +14,7 @@ export const config = {
     "/workouts/:path*",
     "/food/:path*",
     "/measurements/:path*",
+    "/progress/:path*",
     "/book-call/:path*",
     "/education/:path*",
     "/admin/:path*",

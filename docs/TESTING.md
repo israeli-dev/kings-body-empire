@@ -70,6 +70,26 @@ Everything below runs without Paystack keys except step 7.
 - [ ] `GET /api/rank` while signed in returns `rank`, `activeDays`, `streak`,
       `nextRank`, `daysToNextRank`.
 
+## 4b. Progress charts
+
+- [ ] `/progress` opens from the dashboard **Progress** button and the nav.
+- [ ] With no readings: weight, volume and calories cards show empty states
+      (no broken SVG, no NaN labels).
+- [ ] Log two weigh-ins on different days under `/measurements` → the weight
+      line plots both, the headline shows the change in kg, and the last point
+      is highlighted.
+- [ ] Log a workout → the training-volume bar for this week grows
+      (`sets × reps × kg`), and the sessions count increases.
+- [ ] Log meals with calories → the calories chart fills in; the dashed line is
+      the average of the logged days only.
+- [ ] The consistency heatmap colours each day by how much was logged.
+- [ ] Switch to **Last 90 days** → the URL is `/progress?range=90`, more days
+      appear and the stat cards follow the range.
+- [ ] `GET /api/progress?range=30` while signed in returns `weight`, `volume`,
+      `calories`, `activity` and `stats`; signed out returns 401.
+- [ ] Charts are drawn from the server HTML (view source: `<svg>` is present,
+      no client-side chart library).
+
 ## 5. Call booking
 
 - [ ] As **admin**, `/book-call` shows the "Add availability" form; add a slot a
@@ -101,12 +121,25 @@ Without keys:
 
 With keys (`sk_test_…`):
 
-- [ ] **Buy** on a program → redirected to Paystack checkout, amount equals the
-      price (Paystack shows it in naira).
+- [ ] **Subscribe** on a program → redirected to Paystack checkout, amount
+      equals the price (Paystack shows it in naira) and the plan name includes
+      the program title.
 - [ ] Pay with a Paystack test card (`4084 0840 8408 4081`, any future expiry,
       CVV `408`, PIN `0000`, OTP `123456`).
 - [ ] Redirected to `/checkout/success`; the program appears on `/dashboard`
-      under "Your programs" and in `/admin` with status **PAID**.
+      under "Your programs" with a next-charge date, and the purchase shows as
+      **PAID** in `/admin`.
+- [ ] `/admin` shows **MRR (active)**, **Active subs** and a row in the
+      **Subscriptions** table.
+- [ ] **Cancel subscription** on the dashboard card → status becomes
+      **Ending**, access is kept until the paid period ends, and Paystack's
+      subscription page shows it as cancelled.
+- [ ] **Keep billing** before that date → status returns to **Active**.
+- [ ] Without a public webhook (localhost, no tunnel), checkout still records
+      the subscription through the callback's Paystack lookup.
+- [ ] Simulate a failed renewal by updating the `Subscription` row to
+      `PAST_DUE` with `currentPeriodEnd` = today in Studio → the dashboard shows
+      "Payment failed" and access is kept for 3 more days.
 - [ ] `/books/<slug>` after buying → **Download the PDF** works; the underlying
       file URL only appears through `/api/books/<slug>/download`.
 - [ ] Open `/api/books/<slug>/download` in a private window while logged out →
@@ -131,4 +164,4 @@ npm start   # then re-check a few pages at http://localhost:3000
 ```
 
 - [ ] `npm run build` completes without type errors.
-- [ ] `npm test` shows 43 passing tests.
+- [ ] `npm test` shows 89 passing tests.
