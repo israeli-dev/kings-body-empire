@@ -184,7 +184,7 @@ Seeded accounts (change these before deploying):
 | `NEXT_PUBLIC_SITE_URL` | recommended | Used for absolute links, metadata and Paystack callbacks |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | seed | The admin account `npm run db:seed` creates |
 | `SEED_DEMO_CLIENT` | optional | `false` skips the demo client account |
-| `PAYSTACK_SECRET_KEY` | optional | Turns Paystack checkout on. `sk_test_…` for testing |
+| `PAYSTACK_SECRET_KEY` | optional | Turns Paystack checkout on. `sk_test_…` for testing. Also used to create plans and cancel subscriptions |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | optional | Only needed if you later switch to Paystack Inline JS |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | optional | Shown in the footer |
 | `NEXT_PUBLIC_WHATSAPP_URL` / `NEXT_PUBLIC_INSTAGRAM_URL` | optional | Footer links; leave blank to hide |
@@ -290,19 +290,63 @@ the header and the dashboard card always agree.
 
 ## How payments work
 
-1. Client clicks **Buy** → `POST /api/paystack/initialize` creates a `PENDING`
-   purchase row with a unique `paystackRef` and returns Paystack's
-   `authorization_url`.
+**Programs are monthly subscriptions, e-books are one-off.** Both start the same
+way:
+
+1. Client clicks **Subscribe** → `POST /api/paystack/initialize` creates a
+   `PENDING` `PackagePurchase` (or `BookPurchase`) with a unique `paystackRef`.
+   For a monthly program it first makes sure the program has a Paystack plan
+   (`POST /plan`, stored on `Package.paystackPlanCode`), then initialises the
+   transaction **with the plan code and no amount** — Paystack takes the amount
+   and the monthly renewal from the plan.
 2. Browser goes to Paystack, pays, and is redirected to
    `GET /api/paystack/callback?reference=…`. The server calls Paystack's
-   `/transaction/verify/:reference`, checks the amount, and marks the purchase
-   `PAID`.
+   `/transaction/verify/:reference`, checks the amount, marks the purchase
+   `PAID`, and (for programs) pulls the new subscription from Paystack so
+   checkout still completes before the webhook lands.
 3. `POST /api/paystack/webhook` (signature-verified, idempotent) is the
    reliable backstop if the user closes the tab before the redirect.
 
 Set the webhook URL in the Paystack dashboard to
 `https://<your-domain>/api/paystack/webhook`. Locally, expose the dev server
-with a tunnel (e.g. `ngrok http 3000`) and use that URL.
+with a tunnel (e.g. `ngrok http 3000`) and use that URL — without it the first
+charge still works through the callback, but renewals and cancellations will
+not reach your laptop.
+
+## Subscriptions
+
+| Piece | Where |
+| --- | --- |
+| Status rules (access, grace, labels) | `src/lib/subscription-core.ts` — pure, unit tested |
+| Paystack calls (plan, list, disable, enable) | `src/lib/paystack.ts` |
+| DB + webhook handling | `src/lib/subscriptions.ts` |
+| Webhook entry point | `src/app/api/paystack/webhook/route.ts` |
+| Cancel / reactivate API | `PATCH /api/subscriptions` |
+| Dashboard card | `src/components/subscription-card.tsx` |
+
+Access rule (`hasActiveProgramAccess`): `ACTIVE`, `NON_RENEWING` and `CANCELLED`
+grant access until `currentPeriodEnd`; `PAST_DUE` adds a **3-day grace window**
+(`GRACE_DAYS`) while Paystack retries the card; `COMPLETE` grants nothing.
+Cancelling stops the next charge but never takes back time already paid for.
+
+Events handled (log in Paystack → Webhooks to replay a missed one):
+
+| Event | Effect locally |
+| --- | --- |
+| `charge.success` | marks the matching purchase `PAID` |
+| `subscription.create` | writes `Subscription` (code, email token, next payment date) |
+| `subscription.not_renew` / `.disable` | `NON_RENEWING` / `CANCELLED` — access kept to period end |
+| `subscription.enable` | back to `ACTIVE` |
+| `invoice.create` | opens a `PENDING` `Invoice` |
+| `invoice.update` | `PAID`, extends `currentPeriodEnd` |
+| `invoice.payment_failed` | `PAST_DUE` + 3-day grace |
+
+`Invoice.invoiceCode` is unique, so a replayed webhook cannot extend access twice.
+
+**Changing a program price creates a new Paystack plan** the next time someone
+subscribes; existing subscribers stay on the plan (and price) they signed up to.
+That is deliberate — the admin console shows MRR from active subscriptions, and
+the Subscriptions table shows what each client is actually being charged.
 
 ## Changing program prices
 

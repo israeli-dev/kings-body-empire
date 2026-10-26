@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/api";
 import { absoluteUrl, paymentsEnabled } from "@/lib/env";
 import { verifyPayment } from "@/lib/paystack";
 import { findPurchaseByReference, markPurchaseFailed, markPurchasePaid } from "@/lib/purchases";
+import { prisma } from "@/lib/prisma";
+import { syncSubscriptionFromPaystack } from "@/lib/subscriptions";
 
 /**
  * Paystack redirects the customer's browser here after checkout.
@@ -42,6 +44,35 @@ export async function GET(req: Request) {
   if (!paid) {
     await markPurchaseFailed(reference);
     return NextResponse.redirect(absoluteUrl(`/checkout/failure?reason=unsuccessful&ref=${reference}`));
+  }
+
+  // Monthly programs: the subscription itself arrives by webhook. Fetch it
+  // here too so checkout still works when webhooks point at a deployed URL.
+  if (purchase.kind === "package") {
+    const row = await prisma.packagePurchase.findUnique({
+      where: { paystackRef: reference },
+      include: {
+        package: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            priceKobo: true,
+            billingInterval: true,
+            paystackPlanCode: true,
+            paystackPlanAmountKobo: true,
+          },
+        },
+      },
+    });
+
+    if (row && row.package.billingInterval !== "ONE_OFF" && user.email) {
+      await syncSubscriptionFromPaystack({
+        userId: user.id,
+        email: user.email,
+        pkg: row.package,
+      }).catch(() => undefined);
+    }
   }
 
   return NextResponse.redirect(

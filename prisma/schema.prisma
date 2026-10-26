@@ -30,6 +30,25 @@ enum PaymentStatus {
   FAILED
 }
 
+/// Programs are billed monthly through a Paystack Plan; e-books are one-off.
+enum BillingInterval {
+  MONTHLY
+  ONE_OFF
+}
+
+enum SubscriptionStatus {
+  /// Paid and renewing.
+  ACTIVE
+  /// Cancelled by the client but paid up to `currentPeriodEnd`.
+  NON_RENEWING
+  /// A renewal charge failed — access continues for a short grace period.
+  PAST_DUE
+  /// Cancelled and finished, or the plan was disabled.
+  CANCELLED
+  /// Paystack has stopped billing and the paid period is over.
+  COMPLETE
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -46,6 +65,7 @@ model User {
   bookPurchases    BookPurchase[]
   callBookings     CallBooking[]
   resetTokens      PasswordResetToken[]
+  subscriptions    Subscription[]
 }
 
 /// Single-use, hashed password-reset tokens. Only a SHA-256 hash is stored, so
@@ -112,8 +132,59 @@ model Package {
   previewVideoUrl String?
   contents        String[]
   isActive        Boolean           @default(true)
+  /// MONTHLY programs are sold as Paystack subscriptions; ONE_OFF as a single charge.
+  billingInterval BillingInterval   @default(MONTHLY)
+  /// Paystack plan (`pln_…`) used at checkout. A price change creates a new plan.
+  paystackPlanCode       String?
+  /// The amount the current plan code bills, so a price edit can be detected.
+  paystackPlanAmountKobo Int?
   createdAt       DateTime          @default(now())
   purchases       PackagePurchase[]
+  subscriptions   Subscription[]
+}
+
+/// One live subscription per client per program. Renewals arrive as invoices.
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId        String
+  package          Package            @relation(fields: [packageId], references: [id])
+  /// Paystack `subscription_code` (SUB_…).
+  subscriptionCode String             @unique
+  /// Paystack `email_token` — required to cancel or reactivate.
+  emailToken       String
+  status           SubscriptionStatus @default(ACTIVE)
+  amountKobo       Int
+  /// End of the paid-for period. Access is granted up to this date.
+  currentPeriodEnd DateTime
+  nextPaymentDate  DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  invoices         Invoice[]
+
+  @@unique([userId, packageId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+/// A renewal charge. Doubles as the webhook replay guard: `invoiceCode` is unique.
+model Invoice {
+  id             String        @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  invoiceCode    String        @unique
+  reference      String?
+  amountKobo     Int
+  status         PaymentStatus @default(PENDING)
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([subscriptionId])
+  @@index([status])
 }
 
 model PackagePurchase {

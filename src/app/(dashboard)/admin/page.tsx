@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { subscriptionLabel } from "@/lib/subscription-core";
 
 export const metadata: Metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function AdminPage() {
   if (!user) redirect("/login?callbackUrl=%2Fadmin");
   if (user.role !== "ADMIN") redirect("/dashboard");
 
-  const [users, packagePurchases, bookPurchases, bookings, counts] = await Promise.all([
+  const [users, packagePurchases, bookPurchases, bookings, counts, subscriptions, activeSubscriptions, pastDueCount] = await Promise.all([
     prisma.user.count(),
     prisma.packagePurchase.findMany({
       include: {
@@ -49,6 +50,19 @@ export default async function AdminPage() {
       prisma.package.count(),
       prisma.book.count(),
     ]),
+    prisma.subscription.findMany({
+      include: {
+        package: { select: { title: true } },
+        user: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    prisma.subscription.findMany({
+      where: { status: "ACTIVE" },
+      select: { amountKobo: true },
+    }),
+    prisma.subscription.count({ where: { status: "PAST_DUE" } }),
   ]);
 
   const revenueKobo = [...packagePurchases, ...bookPurchases]
@@ -56,6 +70,11 @@ export default async function AdminPage() {
     .reduce((sum, purchase) => sum + purchase.amountKobo, 0);
 
   const [workoutCount, foodCount, lessonCount, packageCount, bookCount] = counts;
+  // Every program is billed monthly, so "active" sums straight to MRR.
+  const mrrKobo = activeSubscriptions.reduce(
+    (sum: number, row: { amountKobo: number }) => sum + row.amountKobo,
+    0,
+  );
 
   return (
     <div className="space-y-8">
@@ -63,8 +82,8 @@ export default async function AdminPage() {
         <p className="eyebrow">Admin</p>
         <h1 className="mt-2 text-3xl font-semibold">Coach console</h1>
         <p className="mt-2 text-sm text-muted">
-          Revenue, purchases and calls in one place. Lesson and slot management live on their
-          own pages.
+          Revenue, subscriptions, purchases and calls in one place. Lesson and slot management
+          live on their own pages.
         </p>
       </header>
 
@@ -74,10 +93,23 @@ export default async function AdminPage() {
           { label: "Revenue (paid)", value: formatNaira(revenueKobo) },
           { label: "Workout logs", value: workoutCount.toString() },
           { label: "Meals logged", value: foodCount.toString() },
+          { label: "MRR (active)", value: formatNaira(mrrKobo) },
+          { label: "Active subs", value: activeSubscriptions.length.toString() },
+          {
+            label: "Failed renewals",
+            value: pastDueCount.toString(),
+            danger: pastDueCount > 0,
+          },
         ].map((stat) => (
           <div key={stat.label} className="card-tight">
             <p className="text-xs uppercase tracking-wider text-muted">{stat.label}</p>
-            <p className="mt-1 text-2xl font-semibold">{stat.value}</p>
+            <p
+              className={`mt-1 text-2xl font-semibold ${
+                "danger" in stat && stat.danger ? "text-danger" : ""
+              }`}
+            >
+              {stat.value}
+            </p>
           </div>
         ))}
       </div>
@@ -90,6 +122,64 @@ export default async function AdminPage() {
           {packageCount} programs · {bookCount} e-books · {lessonCount} lessons
         </span>
       </div>
+
+      <section>
+        <h2 className="text-lg font-semibold">Subscriptions</h2>
+        <p className="mt-1 text-xs text-muted">
+          Programs renew monthly through Paystack. A price change starts a new plan — existing
+          subscribers keep the amount they signed up at until they resubscribe.
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-panel">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="border-b border-line text-xs uppercase tracking-wider text-muted">
+              <tr>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Program</th>
+                <th className="px-4 py-3">Monthly</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Paid until</th>
+                <th className="px-4 py-3">Next charge</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {subscriptions.map((subscription) => (
+                <tr key={subscription.id}>
+                  <td className="px-4 py-3">
+                    {subscription.user.name}
+                    <span className="block text-xs text-muted">{subscription.user.email}</span>
+                  </td>
+                  <td className="px-4 py-3">{subscription.package.title}</td>
+                  <td className="px-4 py-3">{formatNaira(subscription.amountKobo)}</td>
+                  <td
+                    className={`px-4 py-3 font-medium ${
+                      subscription.status === "ACTIVE"
+                        ? "text-success"
+                        : subscription.status === "PAST_DUE"
+                          ? "text-danger"
+                          : "text-muted"
+                    }`}
+                  >
+                    {subscriptionLabel(subscription.status)}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted">
+                    {subscription.currentPeriodEnd.toLocaleDateString("en-NG")}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted">
+                    {subscription.nextPaymentDate?.toLocaleDateString("en-NG") ?? "—"}
+                  </td>
+                </tr>
+              ))}
+              {subscriptions.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-muted">
+                    No subscriptions yet. The first monthly checkout will appear here.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section>
         <h2 className="text-lg font-semibold">Program purchases</h2>

@@ -13,6 +13,9 @@ type Props = {
   owned?: boolean;
   ownedHref?: string;
   className?: string;
+  /** "Subscribe" for monthly programs, "Buy" for one-off items and e-books. */
+  verb?: string;
+  ownedLabel?: string;
 };
 
 export function BuyButton({
@@ -23,6 +26,8 @@ export function BuyButton({
   owned = false,
   ownedHref,
   className = "btn-primary w-full",
+  verb = "Buy",
+  ownedLabel = "You own this — open",
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -35,7 +40,8 @@ export function BuyButton({
         href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
         className={className}
       >
-        Log in to buy{price ? ` · ${price}` : ""}
+        Log in to {verb.toLowerCase()}
+        {price ? ` · ${price}` : ""}
       </Link>
     );
   }
@@ -43,7 +49,7 @@ export function BuyButton({
   if (owned) {
     return (
       <Link href={ownedHref ?? "/dashboard"} className="btn-secondary w-full">
-        You own this — open
+        {ownedLabel}
       </Link>
     );
   }
@@ -92,7 +98,7 @@ export function BuyButton({
   return (
     <div className="w-full">
       <button type="button" onClick={handleClick} className={className} disabled={loading}>
-        {loading ? "Opening Paystack…" : `Buy${price ? ` · ${price}` : ""}`}
+        {loading ? "Opening Paystack…" : `${verb}${price ? ` · ${price}` : ""}`}
       </button>
       {error && <p className="alert-error mt-2">{error}</p>}
     </div>

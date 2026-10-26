@@ -167,8 +167,9 @@ async function main() {
         priceKobo: pkg.priceKobo,
         contents: pkg.contents,
         isActive: true,
+        billingInterval: "MONTHLY",
       },
-      create: pkg,
+      create: { ...pkg, billingInterval: "MONTHLY" },
     });
   }
   console.log(`✓ ${PACKAGES.length} programs ready`);
