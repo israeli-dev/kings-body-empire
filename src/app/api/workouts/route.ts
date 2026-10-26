@@ -44,8 +44,8 @@ export async function POST(req: Request) {
     const log = await prisma.workoutLog.create({
       data: { userId: user.id, exercise, sets, reps, weightKg },
     });
-    await recalculateRank(user.id);
-    return NextResponse.json(log, { status: 201 });
+    const rank = await recalculateRank(user.id);
+    return NextResponse.json({ log, rank }, { status: 201 });
   } catch {
     return serverError("Could not save that workout.");
   }
@@ -61,6 +61,6 @@ export async function DELETE(req: Request) {
   const deleted = await prisma.workoutLog.deleteMany({ where: { id, userId: user.id } });
   if (deleted.count === 0) return notFound("That workout log no longer exists.");
 
-  await recalculateRank(user.id);
-  return NextResponse.json({ ok: true });
+  const rank = await recalculateRank(user.id);
+  return NextResponse.json({ ok: true, rank });
 }

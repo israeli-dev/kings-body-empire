@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { subscribeToRankChanges, type RankSnapshot } from "@/lib/rank-events";
 import { Logo } from "./logo";
 import { RankBadge } from "./rank-badge";
 import { LogoutButton } from "./logout-button";
@@ -28,14 +29,30 @@ export function DashboardNav({ initialRank }: { initialRank: RankName }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/rank")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { rank?: RankName } | null) => {
-        if (active && data?.rank) setRank(data.rank);
-      })
-      .catch(() => undefined);
+    const refresh = () => {
+      fetch("/api/rank", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { rank?: RankName } | null) => {
+          if (active && data?.rank) setRank(data.rank);
+        })
+        .catch(() => undefined);
+    };
+
+    refresh();
+
+    // Logging a workout, meal or measurement fires this event, so the badge in
+    // the header changes at the same moment the form says "Saved".
+    const unsubscribe = subscribeToRankChanges((snapshot?: RankSnapshot) => {
+      if (snapshot?.rank) {
+        setRank(snapshot.rank);
+      } else {
+        refresh();
+      }
+    });
+
     return () => {
       active = false;
+      unsubscribe();
     };
   }, [pathname]);
 

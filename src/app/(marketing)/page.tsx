@@ -127,13 +127,27 @@ export default function HomePage() {
         <div className="container-page">
           <p className="eyebrow">The toolkit</p>
           <h2 className="section-title mt-3">Everything you need to stay honest</h2>
+          <p className="mt-4 max-w-xl text-sm text-muted">
+            All four are free and live in your dashboard. Log one thing today — the rank
+            starts counting from that first entry.
+          </p>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((feature) => (
-              <article key={feature.title} className="card">
+              <Link
+                key={feature.title}
+                href={feature.href}
+                className="card group flex flex-col transition hover:border-gold/40 hover:bg-panel2"
+              >
                 <span className="text-2xl" aria-hidden="true">{feature.icon}</span>
-                <h3 className="mt-3 text-base font-semibold">{feature.title}</h3>
-                <p className="mt-2 text-sm text-muted">{feature.body}</p>
-              </article>
+                <h3 className="mt-3 text-base font-semibold group-hover:text-goldSoft">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 flex-1 text-sm text-muted">{feature.body}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gold">
+                  {feature.cta}
+                  <span aria-hidden="true">→</span>
+                </span>
+              </Link>
             ))}
           </div>
         </div>

@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RankLive } from "@/components/rank-live";
+import { logConfirmation, type RankProgress } from "@/lib/rank-core";
+import { announceRankChange, type RankSnapshot } from "@/lib/rank-events";
 
 type WorkoutLog = {
   id: string;
@@ -14,6 +18,7 @@ type WorkoutLog = {
 const QUICK_PICKS = ["Squat", "Bench press", "Deadlift", "Overhead press", "Pull-up", "Treadmill"];
 
 export default function WorkoutsPage() {
+  const router = useRouter();
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,16 +67,32 @@ export default function WorkoutsPage() {
       return;
     }
 
+    const data = (await res.json().catch(() => null)) as
+      | { rank?: RankSnapshot }
+      | null;
+
     setForm({ exercise: "", sets: "", reps: "", weightKg: "" });
-    setMessage("Workout logged. Rank updated.");
+    setMessage(
+      data?.rank
+        ? logConfirmation(data.rank as RankProgress, data.rank.streak)
+        : "Workout logged.",
+    );
+    if (data?.rank) announceRankChange(data.rank);
+    router.refresh();
     void loadLogs();
   }
 
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this workout log?")) return;
     const res = await fetch(`/api/workouts?id=${id}`, { method: "DELETE" });
-    if (res.ok) void loadLogs();
-    else setError("Could not delete that log.");
+    if (res.ok) {
+      const data = (await res.json().catch(() => null)) as { rank?: RankSnapshot } | null;
+      if (data?.rank) announceRankChange(data.rank);
+      router.refresh();
+      void loadLogs();
+    } else {
+      setError("Could not delete that log.");
+    }
   }
 
   const totalVolume = logs.reduce(
@@ -88,6 +109,8 @@ export default function WorkoutsPage() {
           Every session you log keeps your streak alive and feeds your rank.
         </p>
       </header>
+
+      <RankLive />
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>

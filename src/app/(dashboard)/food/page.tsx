@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RankLive } from "@/components/rank-live";
+import { logConfirmation, type RankProgress } from "@/lib/rank-core";
+import { announceRankChange, type RankSnapshot } from "@/lib/rank-events";
 
 type FoodLog = {
   id: string;
@@ -12,6 +16,7 @@ type FoodLog = {
 const QUICK_PICKS = ["Oatmeal & eggs", "Jollof rice & chicken", "Grilled fish & salad", "Protein shake"];
 
 export default function FoodPage() {
+  const router = useRouter();
   const [logs, setLogs] = useState<FoodLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,16 +63,28 @@ export default function FoodPage() {
       return;
     }
 
+    const data = (await res.json().catch(() => null)) as { rank?: RankSnapshot } | null;
+
     setForm({ description: "", calories: "" });
-    setMessage("Meal logged.");
+    setMessage(
+      data?.rank ? logConfirmation(data.rank as RankProgress, data.rank.streak) : "Meal logged.",
+    );
+    if (data?.rank) announceRankChange(data.rank);
+    router.refresh();
     void loadLogs();
   }
 
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this food log?")) return;
     const res = await fetch(`/api/food?id=${id}`, { method: "DELETE" });
-    if (res.ok) void loadLogs();
-    else setError("Could not delete that log.");
+    if (res.ok) {
+      const data = (await res.json().catch(() => null)) as { rank?: RankSnapshot } | null;
+      if (data?.rank) announceRankChange(data.rank);
+      router.refresh();
+      void loadLogs();
+    } else {
+      setError("Could not delete that log.");
+    }
   }
 
   const todayKey = new Date().toDateString();
@@ -84,6 +101,8 @@ export default function FoodPage() {
           Write what you actually ate. Estimates are fine — honesty is the point.
         </p>
       </header>
+
+      <RankLive />
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>

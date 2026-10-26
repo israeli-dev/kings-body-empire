@@ -15,6 +15,10 @@ Everything below runs without Paystack keys except step 7.
 - [ ] Both images appear instantly on reload (cached) and are not distorted
       (no stretched faces).
 - [ ] Nav links work on mobile (Menu button) and desktop.
+- [ ] **The toolkit** cards (Workout log, Food log, Body measurements, Consistency
+      rank) are links: hover shows gold border + arrow, and clicking signed out
+      lands on `/login?callbackUrl=%2Fworkouts` (etc.), returning to that form
+      after login.
 - [ ] `/pricing` lists the three seeded programs with naira prices and contents.
 - [ ] `/books` lists three e-books; each **Details** link opens `/books/<slug>`.
 - [ ] `/checkout/success` and `/checkout/failure` render something sensible.
@@ -69,6 +73,23 @@ Everything below runs without Paystack keys except step 7.
       `npm run db:studio` and different `loggedAt` dates) → **Silver**.
 - [ ] `GET /api/rank` while signed in returns `rank`, `activeDays`, `streak`,
       `nextRank`, `daysToNextRank`.
+
+### Rank reacts on the spot
+
+- [ ] Every log page (`/workouts`, `/food`, `/measurements`) shows a
+      **Consistency rank** panel with the badge, `X of 7 active days` and the
+      streak.
+- [ ] Log a workout → the success line reads
+      `Saved. Bronze — 1 of 7 active days. 1 more active day for Silver.`
+- [ ] The header badge and the panel's progress bar update **without a reload**,
+      and the panel flashes gold for a couple of seconds.
+- [ ] Log a second entry the same day → the count stays at `1 of 7` (a day is a
+      day) and the message repeats honestly.
+- [ ] Delete that day's only entry → the panel drops back to the previous rank.
+- [ ] `POST /api/workouts` (etc.) returns `{ "log": {...}, "rank": { "rank": …,
+      "activeDays": …, "streak": …, "nextRank": …, "daysToNextRank": … } }`.
+- [ ] After `npm run db:seed`, the demo client starts at **Gold** with five days
+      of history; `/dashboard` and `/progress` are populated rather than empty.
 
 ## 4b. Progress charts
 
@@ -189,4 +210,4 @@ npm start   # then re-check a few pages at http://localhost:3000
 ```
 
 - [ ] `npm run build` completes without type errors.
-- [ ] `npm test` shows 101 passing tests.
+- [ ] `npm test` shows 105 passing tests.

@@ -3,8 +3,11 @@ import {
   computeStreak,
   countActiveDays,
   dayKey,
+  logConfirmation,
   previousDayKey,
   rankForActiveDays,
+  rankNudge,
+  rankPercent,
   rankProgress,
 } from "@/lib/rank-core";
 
@@ -104,5 +107,40 @@ describe("rankProgress", () => {
     expect(progress.rank).toBe("DIAMOND");
     expect(progress.nextRank).toBeNull();
     expect(progress.atTopRank).toBe(true);
+  });
+});
+
+describe("rank feedback after logging", () => {
+  it("says the rank out loud and how far the next one is", () => {
+    expect(logConfirmation(rankProgress(1))).toBe(
+      "Saved. Bronze — 1 of 7 active days. 1 more active day for Silver.",
+    );
+    expect(logConfirmation(rankProgress(2), 2)).toBe(
+      "Saved. Silver — 2 of 7 active days. 2 more active days for Gold. 2-day streak.",
+    );
+    expect(logConfirmation(rankProgress(6), 5)).toBe(
+      "Saved. Diamond — 6 of 7 active days this week, top rank. 5-day streak.",
+    );
+  });
+
+  it("explains that a second entry on the same day does not move the rank", () => {
+    // Same day, same count — the message stays honest instead of promising a jump.
+    const once = logConfirmation(rankProgress(1));
+    const twice = logConfirmation(rankProgress(1));
+    expect(once).toBe(twice);
+    expect(once).toContain("1 of 7 active days");
+  });
+
+  it("nudges with the next action", () => {
+    expect(rankNudge(rankProgress(0))).toBe("Log anything today — it counts as day one.");
+    expect(rankNudge(rankProgress(3))).toBe("1 more active day for Gold. One entry a day is enough.");
+    expect(rankNudge(rankProgress(6))).toBe("Top rank. Keep logging to hold Diamond.");
+  });
+
+  it("fills the bar relative to the current rank band", () => {
+    expect(rankPercent(rankProgress(4))).toBe(0); // exactly at Gold, next is Diamond
+    expect(rankPercent(rankProgress(5))).toBe(50); // halfway from Gold to Diamond
+    expect(rankPercent(rankProgress(6))).toBe(100);
+    expect(rankPercent(rankProgress(1))).toBe(50); // halfway from Bronze to Silver
   });
 });

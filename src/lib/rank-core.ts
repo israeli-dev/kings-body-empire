@@ -110,6 +110,52 @@ export function rankProgress(activeDays: number, windowDays = 7): RankProgress {
   };
 }
 
+/**
+ * What to tell a client right after they log something.
+ *
+ * Logging twice in one day cannot move the rank — the rank counts distinct
+ * *days*. Saying that out loud stops people thinking the feature is broken.
+ */
+export function logConfirmation(progress: RankProgress, streak = 0): string {
+  const days = `${progress.activeDays} of ${progress.windowDays} active days`;
+  const streakLine =
+    streak >= 2 ? ` ${streak}-day streak.` : "";
+
+  if (progress.atTopRank) {
+    return `Saved. ${RANK_LABELS[progress.rank]} — ${days} this week, top rank.${streakLine}`;
+  }
+
+  const remaining = progress.daysToNextRank;
+  return `Saved. ${RANK_LABELS[progress.rank]} — ${days}. ${remaining} more active day${
+    remaining === 1 ? "" : "s"
+  } for ${RANK_LABELS[progress.nextRank as RankName]}.${streakLine}`;
+}
+
+/** One short line for the rank panel: what to do next. */
+export function rankNudge(progress: RankProgress): string {
+  if (progress.atTopRank) {
+    return "Top rank. Keep logging to hold Diamond.";
+  }
+  if (progress.activeDays === 0) {
+    return "Log anything today — it counts as day one.";
+  }
+  const remaining = progress.daysToNextRank;
+  return `${remaining} more active day${remaining === 1 ? "" : "s"} for ${
+    RANK_LABELS[progress.nextRank as RankName]
+  }. One entry a day is enough.`;
+}
+
+/** Progress towards the next rank, 0–100, for a progress bar. */
+export function rankPercent(progress: RankProgress): number {
+  if (progress.atTopRank) return 100;
+  const thresholds: Record<RankName, number> = { BRONZE: 0, SILVER: 2, GOLD: 4, DIAMOND: 6 };
+  const floor = thresholds[progress.rank];
+  const ceiling = progress.nextRank ? thresholds[progress.nextRank] : progress.windowDays;
+  const span = Math.max(1, ceiling - floor);
+  const done = Math.min(span, Math.max(0, progress.activeDays - floor));
+  return Math.round((done / span) * 100);
+}
+
 export const RANK_LABELS: Record<RankName, string> = {
   BRONZE: "Bronze",
   SILVER: "Silver",
