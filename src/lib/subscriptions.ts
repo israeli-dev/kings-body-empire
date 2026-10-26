@@ -99,13 +99,25 @@ export async function saveSubscription(input: {
 }) {
   const existing = await prisma.subscription.findUnique({
     where: { userId_packageId: { userId: input.userId, packageId: input.packageId } },
-    select: { id: true },
+    select: { id: true, status: true, currentPeriodEnd: true },
   });
 
   let currentPeriodEnd = input.currentPeriodEnd;
   let nextPaymentDate = input.nextPaymentDate ?? input.currentPeriodEnd;
 
-  if (!existing) {
+  // Banked referral days attach to the next period that starts, which is either
+  // a brand-new subscription or one whose paid time has already run out.
+  const stillPaid =
+    existing !== null &&
+    subscriptionGrantsAccess(
+      {
+        status: existing.status as SubscriptionStatusName,
+        currentPeriodEnd: existing.currentPeriodEnd,
+      },
+      new Date(),
+    );
+
+  if (!stillPaid) {
     // Referral bonus days earned before they had a plan are applied here, once.
     const owner = await prisma.user.findUnique({
       where: { id: input.userId },
