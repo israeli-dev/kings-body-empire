@@ -125,18 +125,36 @@ says whether the schema exists.
 
 ## 4. Create the tables and seed
 
+**On a hosted database (Supabase / Neon / Railway) — this is the one to use:**
+
 ```bash
-npm run db:migrate   # applies prisma/migrations/*
-npm run db:seed      # admin + demo client, programs, e-books, lessons, call slots
+npm run db:setup      # = prisma migrate deploy && prisma db seed
 ```
 
-On an empty hosted database you can do both at once with `npm run db:setup`.
-If anything fails, the seed now prints a diagnosis instead of a raw Prisma
-stack trace — the same information `npm run db:check` gives you.
+`db:deploy` applies the migrations that are already committed and does **not**
+need a shadow database, which is why it works on Supabase. Seeding only works
+after the tables exist, so the order matters: migrate → seed.
 
-`db:migrate` runs `prisma migrate dev`; on a brand-new database it will create
-a shadow database, so the user in `DATABASE_URL` needs permission to create
-databases (true for local Docker; on Supabase use `npm run db:push` instead).
+**Locally with Docker/Postgres**, the equivalent is:
+
+```bash
+npm run db:deploy     # or `npm run db:migrate` while developing
+npm run db:seed
+```
+
+### Which database command do I want?
+
+| Command | Under the hood | Use it when |
+| --- | --- | --- |
+| `npm run db:setup` | `migrate deploy` + `seed` | First run on any empty database |
+| `npm run db:deploy` | `prisma migrate deploy` | Applying committed migrations anywhere (hosted, CI, production) |
+| `npm run db:seed` | `prisma db seed` | Accounts/catalogue are missing; safe to re-run (upserts) |
+| `npm run db:migrate` | `prisma migrate dev` | **Development only**, after you edit `prisma/schema.prisma`. Creates a shadow database, so the user needs `CREATEDB` (local Docker: yes, Supabase: usually no) |
+| `npm run db:push` | `prisma db push` | Throwaway prototyping — bypasses migration history |
+| `npm run db:reset` | `migrate reset --force` | Local only: drop everything, re-migrate, re-seed |
+
+If anything fails, the seed prints a diagnosis instead of a raw Prisma stack
+trace — the same information `npm run db:check` gives you.
 
 ## 5. Run it
 

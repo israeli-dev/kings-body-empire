@@ -19,9 +19,12 @@ see the Troubleshooting table in the README.
 2. From your machine, with that URL in `DATABASE_URL`:
 
    ```bash
-   npm run db:deploy   # applies prisma/migrations to production
+   npm run db:deploy   # applies prisma/migrations to production (no shadow DB needed)
    npm run db:seed     # optional: admin account + starter catalogue
    ```
+
+   `db:deploy` is the right command on Supabase/Neon — `db:migrate` is for local
+   schema development only, because it wants to create a shadow database.
 
    Use a direct/session connection for this step — a transaction pooler
    (PgBouncer on port 6543) will refuse the advisory locks migrations need.
