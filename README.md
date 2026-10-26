@@ -288,6 +288,44 @@ day. The last **7 days** are counted (in `NEXT_PUBLIC_TIMEZONE`):
 Stored on `User.rank` and recalculated after every log write, so the badge in
 the header and the dashboard card always agree.
 
+## Logging and the consistency rank
+
+The three loggers are ordinary pages inside the dashboard, and every write goes
+through the same loop:
+
+```
+/workouts · /food · /measurements
+        │ POST /api/<kind>
+        ▼
+ prisma.<kind>Log.create({ userId })      ← always scoped to the signed-in client
+        │
+        ▼
+ recalculateRank(userId)                  ← distinct active days in the last 7
+        │  { rank, activeDays, streak, nextRank, daysToNextRank }
+        ▼
+ { log, rank }  →  "Saved. Silver — 2 of 7 active days. 2 more active days for Gold."
+                →  announceRankChange(rank) → header badge + RankLive panel move now
+                →  router.refresh() → server-rendered dashboard agrees too
+```
+
+Worth knowing:
+
+- **The rank counts days, not entries.** Two workouts on Tuesday is one active
+  day. `logConfirmation()` says this out loud so nobody thinks logging is broken.
+- Thresholds: 2 active days → Silver, 4 → Gold, 6 → Diamond (else Bronze), all
+  within the current 7-day window in `NEXT_PUBLIC_TIMEZONE`.
+- Deleting the only entry for a day lowers the rank again — the DELETE handlers
+  also return the recalculated rank.
+- `RankLive` (`src/components/rank-live.tsx`) sits on all three log pages; the
+  badge in `DashboardNav` listens to the same `kbe:rank-changed` event
+  (`src/lib/rank-events.ts`), so the header never lags a page behind.
+- Every landing-page toolkit card links at the real page (`FEATURES[].href` in
+  `src/lib/content.ts`); signed out, the middleware bounces to login and brings
+  the client straight back to that form.
+- `npm run db:seed` gives the demo client five days of workouts, meals and
+  weigh-ins (18 logs) so the rank, charts and dashboard are not empty on a fresh
+  install. It is skipped when the client already has logs.
+
 ## How payments work
 
 **Programs are monthly subscriptions, e-books are one-off.** Both start the same

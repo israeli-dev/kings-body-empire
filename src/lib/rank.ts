@@ -14,11 +14,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * Recomputes a client's rank from the last 7 days of logging activity.
  * Cheap enough to call after every log write.
  */
-export async function recalculateRank(userId: string): Promise<{
-  rank: RankName;
-  activeDays: number;
-  streak: number;
-}> {
+export async function recalculateRank(
+  userId: string,
+): Promise<RankProgress & { streak: number }> {
   const now = new Date();
   // 90 days of history so long streaks are counted in full.
   const since = new Date(now.getTime() - 90 * DAY_MS);
@@ -45,7 +43,9 @@ export async function recalculateRank(userId: string): Promise<{
 
   await prisma.user.update({ where: { id: userId }, data: { rank } });
 
-  return { rank, activeDays, streak };
+  // Hand back the full picture so the page that logged can show the new rank
+  // without a second round trip.
+  return { ...rankProgress(activeDays), rank, activeDays, streak };
 }
 
 /** Rank + progress for the dashboard, computed from the stored rank. */

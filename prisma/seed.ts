@@ -11,6 +11,7 @@ import {
   inspectDatabaseUrl,
   parseDatabaseUrl,
 } from "../src/lib/db-diagnostics";
+import { rankForActiveDays } from "../src/lib/rank-core";
 
 const prisma = new PrismaClient();
 
@@ -157,6 +158,7 @@ async function main() {
       },
     });
     console.log(`✓ demo client ready: ${demo.email} / ${DEMO_CLIENT.password}`);
+    await seedDemoHistory(demo.id);
   }
 
   for (const pkg of PACKAGES) {
@@ -234,6 +236,83 @@ async function main() {
   if (process.env.SEED_DEMO_CLIENT !== "false") {
     console.log(`  client → ${DEMO_CLIENT.email} / ${DEMO_CLIENT.password}`);
   }
+}
+
+/**
+ * Gives the demo client a believable week of logs so the consistency rank,
+ * progress charts and dashboard are not empty on a fresh install.
+ *
+ * Only runs when the client has no logs at all, so re-seeding never duplicates
+ * anything you logged by hand.
+ */
+async function seedDemoHistory(userId: string) {
+  const existing = await prisma.workoutLog.count({ where: { userId } });
+  if (existing > 0) {
+    console.log("• demo client already has logs — history skipped");
+    return;
+  }
+
+  // Day offsets from today: a five-day week with two rest days.
+  const DAYS = [6, 5, 4, 1, 0];
+  const now = new Date();
+
+  /** The given day at 18:00 Lagos time (WAT = UTC+1). */
+  function at(daysAgo: number, hourWAT = 18) {
+    // 18:00 Lagos time (WAT = UTC+1) so the entry lands on the intended day.
+    return new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - daysAgo,
+        hourWAT - 1,
+        0,
+        0,
+      ),
+    );
+  }
+
+  const workouts = [
+    { exercise: "Squat", sets: 5, reps: 5, weightKg: 90 },
+    { exercise: "Bench press", sets: 4, reps: 8, weightKg: 70 },
+    { exercise: "Deadlift", sets: 3, reps: 5, weightKg: 120 },
+    { exercise: "Overhead press", sets: 4, reps: 8, weightKg: 45 },
+    { exercise: "Pull-up", sets: 4, reps: 8, weightKg: null },
+  ];
+
+  const meals = [
+    { description: "Oatmeal, eggs and banana", calories: 620 },
+    { description: "Jollof rice with grilled chicken", calories: 880 },
+    { description: "Beans, plantain and fish stew", calories: 760 },
+    { description: "Greek yoghurt and groundnuts", calories: 340 },
+    { description: "Pepper soup with goat meat", calories: 540 },
+  ];
+
+  const weights = [96.4, 96.0, 95.6, 95.1, 94.7];
+
+  for (const [index, daysAgo] of DAYS.entries()) {
+    const loggedAt = at(daysAgo);
+    const workout = workouts[index % workouts.length];
+    const meal = meals[index % meals.length];
+
+    await prisma.workoutLog.create({ data: { userId, ...workout, loggedAt } });
+    await prisma.foodLog.create({ data: { userId, ...meal, loggedAt } });
+    await prisma.measurementLog.create({
+      data: {
+        userId,
+        weightKg: weights[index],
+        waistCm: 92 - index,
+        chestCm: 104 + index * 0.2,
+        loggedAt,
+      },
+    });
+  }
+
+  const rank = rankForActiveDays(DAYS.length);
+  await prisma.user.update({ where: { id: userId }, data: { rank } });
+
+  console.log(
+    `✓ demo history: ${DAYS.length * 3} logs across ${DAYS.length} days (rank ${rank})`,
+  );
 }
 
 function explainFailure(error: unknown) {

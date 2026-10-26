@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RankLive } from "@/components/rank-live";
+import { logConfirmation, type RankProgress } from "@/lib/rank-core";
+import { announceRankChange, type RankSnapshot } from "@/lib/rank-events";
 
 type MeasurementLog = {
   id: string;
@@ -39,6 +43,7 @@ export default function MeasurementsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const router = useRouter();
   const [form, setForm] = useState<Record<Field, string>>(EMPTY_FORM);
 
   const loadLogs = useCallback(async () => {
@@ -81,16 +86,30 @@ export default function MeasurementsPage() {
       return;
     }
 
+    const data = (await res.json().catch(() => null)) as { rank?: RankSnapshot } | null;
+
     setForm(EMPTY_FORM);
-    setMessage("Measurements saved.");
+    setMessage(
+      data?.rank
+        ? logConfirmation(data.rank as RankProgress, data.rank.streak)
+        : "Measurements saved.",
+    );
+    if (data?.rank) announceRankChange(data.rank);
+    router.refresh();
     void loadLogs();
   }
 
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this measurement entry?")) return;
     const res = await fetch(`/api/measurements?id=${id}`, { method: "DELETE" });
-    if (res.ok) void loadLogs();
-    else setError("Could not delete that entry.");
+    if (res.ok) {
+      const data = (await res.json().catch(() => null)) as { rank?: RankSnapshot } | null;
+      if (data?.rank) announceRankChange(data.rank);
+      router.refresh();
+      void loadLogs();
+    } else {
+      setError("Could not delete that entry.");
+    }
   }
 
   const latest = logs[0];
@@ -115,6 +134,8 @@ export default function MeasurementsPage() {
           The tape measure tells the truth the scale hides. Log monthly, or weekly.
         </p>
       </header>
+
+      <RankLive />
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

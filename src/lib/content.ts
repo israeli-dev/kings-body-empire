@@ -10,26 +10,39 @@ export const EDUCATION_CATEGORIES = [
 
 export type EducationCategory = (typeof EDUCATION_CATEGORIES)[number];
 
+/**
+ * The toolkit cards. `href` points at the page that actually does the thing, so
+ * every card on the landing page is a working link — signed out it routes to
+ * login and comes straight back to the form.
+ */
 export const FEATURES = [
   {
     title: "Workout log",
     body: "Log every lift — exercise, sets, reps and load. Your training history stays in one place.",
     icon: "🏋️",
+    href: "/workouts",
+    cta: "Log a workout",
   },
   {
     title: "Food log",
     body: "Track what you eat and the calories behind it. Honest data beats guesswork.",
     icon: "🥗",
+    href: "/food",
+    cta: "Log a meal",
   },
   {
     title: "Body measurements",
     body: "Weight, waist, chest, shoulders, arms. Watch the tape move week by week.",
     icon: "📏",
+    href: "/measurements",
+    cta: "Add measurements",
   },
   {
     title: "Consistency rank",
     body: "Bronze to Diamond. Show up on 6 of 7 days and the rank takes care of itself.",
     icon: "👑",
+    href: "/progress",
+    cta: "See your rank",
   },
 ] as const;
 
