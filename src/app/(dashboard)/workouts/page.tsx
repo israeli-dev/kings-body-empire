@@ -1,63 +1,211 @@
 "use client";
-import { useEffect, useState } from "react";
 
-type WorkoutLog = { id: string; exercise: string; sets: number; reps: number; weightKg: number | null; loggedAt: string };
+import { useCallback, useEffect, useState } from "react";
+
+type WorkoutLog = {
+  id: string;
+  exercise: string;
+  sets: number;
+  reps: number;
+  weightKg: number | null;
+  loggedAt: string;
+};
+
+const QUICK_PICKS = ["Squat", "Bench press", "Deadlift", "Overhead press", "Pull-up", "Treadmill"];
 
 export default function WorkoutsPage() {
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
-  const [exercise, setExercise] = useState("");
-  const [sets, setSets] = useState("");
-  const [reps, setReps] = useState("");
-  const [weightKg, setWeightKg] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [form, setForm] = useState({ exercise: "", sets: "", reps: "", weightKg: "" });
 
-  async function loadLogs() {
-    const res = await fetch("/api/workouts");
-    if (res.ok) setLogs(await res.json());
-  }
-  useEffect(() => { loadLogs(); }, []);
+  const loadLogs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/workouts", { cache: "no-store" });
+      if (res.ok) setLogs((await res.json()) as WorkoutLog[]);
+      else if (res.status === 401) setError("Your session expired — log in again.");
+    } catch {
+      setError("Could not load your workouts.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    void loadLogs();
+  }, [loadLogs]);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError("");
+    setMessage("");
+    setSaving(true);
+
     const res = await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ exercise, sets, reps, weightKg: weightKg || undefined }),
+      body: JSON.stringify({
+        exercise: form.exercise,
+        sets: form.sets,
+        reps: form.reps,
+        weightKg: form.weightKg || undefined,
+      }),
     });
+
+    setSaving(false);
+
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Something went wrong");
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not save that workout.");
       return;
     }
-    setExercise(""); setSets(""); setReps(""); setWeightKg("");
-    loadLogs();
+
+    setForm({ exercise: "", sets: "", reps: "", weightKg: "" });
+    setMessage("Workout logged. Rank updated.");
+    void loadLogs();
   }
 
+  async function handleDelete(id: string) {
+    if (!window.confirm("Delete this workout log?")) return;
+    const res = await fetch(`/api/workouts?id=${id}`, { method: "DELETE" });
+    if (res.ok) void loadLogs();
+    else setError("Could not delete that log.");
+  }
+
+  const totalVolume = logs.reduce(
+    (sum, log) => sum + (log.weightKg ?? 0) * log.sets * log.reps,
+    0,
+  );
+
   return (
-    <main style={{ maxWidth: 560, margin: "40px auto", padding: 24 }}>
-      <h1>Workout Log</h1>
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, marginTop: 20 }}>
-        <input placeholder="Exercise (e.g. Bench Press)" value={exercise} onChange={(e) => setExercise(e.target.value)} required />
-        <div style={{ display: "flex", gap: 10 }}>
-          <input placeholder="Sets" type="number" value={sets} onChange={(e) => setSets(e.target.value)} required style={{ flex: 1 }} />
-          <input placeholder="Reps" type="number" value={reps} onChange={(e) => setReps(e.target.value)} required style={{ flex: 1 }} />
-          <input placeholder="Weight (kg)" type="number" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} style={{ flex: 1 }} />
+    <div className="mx-auto max-w-3xl space-y-8">
+      <header>
+        <p className="eyebrow">Training</p>
+        <h1 className="mt-2 text-3xl font-semibold">Workout log</h1>
+        <p className="mt-2 text-sm text-muted">
+          Every session you log keeps your streak alive and feeds your rank.
+        </p>
+      </header>
+
+      <form onSubmit={handleSubmit} className="card space-y-4">
+        <div>
+          <label className="label" htmlFor="exercise">Exercise</label>
+          <input
+            id="exercise"
+            className="input"
+            placeholder="e.g. Bench press"
+            value={form.exercise}
+            onChange={(event) => setForm({ ...form, exercise: event.target.value })}
+            required
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {QUICK_PICKS.map((pick) => (
+              <button
+                key={pick}
+                type="button"
+                onClick={() => setForm({ ...form, exercise: pick })}
+                className="tag hover:border-gold/50 hover:text-goldSoft"
+              >
+                {pick}
+              </button>
+            ))}
+          </div>
         </div>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button type="submit">Log workout</button>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="label" htmlFor="sets">Sets</label>
+            <input
+              id="sets"
+              type="number"
+              min={1}
+              max={100}
+              className="input"
+              placeholder="4"
+              value={form.sets}
+              onChange={(event) => setForm({ ...form, sets: event.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="reps">Reps</label>
+            <input
+              id="reps"
+              type="number"
+              min={1}
+              max={1000}
+              className="input"
+              placeholder="8"
+              value={form.reps}
+              onChange={(event) => setForm({ ...form, reps: event.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="weight">Weight (kg)</label>
+            <input
+              id="weight"
+              type="number"
+              min={0}
+              step="0.5"
+              className="input"
+              placeholder="70"
+              value={form.weightKg}
+              onChange={(event) => setForm({ ...form, weightKg: event.target.value })}
+            />
+          </div>
+        </div>
+
+        {error && <p className="alert-error">{error}</p>}
+        {message && <p className="alert-success">{message}</p>}
+
+        <button type="submit" className="btn-primary" disabled={saving}>
+          {saving ? "Saving…" : "Log workout"}
+        </button>
       </form>
 
-      <h2 style={{ marginTop: 40 }}>Recent sessions</h2>
-      <ul style={{ listStyle: "none", padding: 0, marginTop: 10 }}>
-        {logs.map((log) => (
-          <li key={log.id} style={{ borderBottom: "1px solid #333", padding: "10px 0" }}>
-            <strong>{log.exercise}</strong> — {log.sets}×{log.reps}{log.weightKg ? ` @ ${log.weightKg}kg` : ""}
-            <div style={{ fontSize: 12, color: "#999" }}>{new Date(log.loggedAt).toLocaleString()}</div>
-          </li>
-        ))}
-        {logs.length === 0 && <p style={{ color: "#999" }}>No workouts logged yet.</p>}
-      </ul>
-    </main>
+      <section>
+        <div className="flex items-end justify-between gap-4">
+          <h2 className="text-lg font-semibold">Recent sessions</h2>
+          <span className="text-xs text-muted">
+            {logs.length} logged · {Math.round(totalVolume).toLocaleString("en-NG")} kg volume
+          </span>
+        </div>
+
+        <ul className="mt-4 divide-y divide-line rounded-2xl border border-line bg-panel">
+          {loading && <li className="px-5 py-6 text-sm text-muted">Loading…</li>}
+          {!loading && logs.length === 0 && (
+            <li className="px-5 py-6 text-sm text-muted">
+              No workouts yet. Log your first session above.
+            </li>
+          )}
+          {logs.map((log) => (
+            <li key={log.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
+              <div>
+                <p className="text-sm font-medium">{log.exercise}</p>
+                <p className="text-xs text-muted">
+                  {log.sets} × {log.reps}
+                  {log.weightKg ? ` @ ${log.weightKg}kg` : ""} ·{" "}
+                  {new Date(log.loggedAt).toLocaleString("en-NG", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(log.id)}
+                className="btn-ghost btn-sm text-danger hover:text-danger"
+                aria-label={`Delete ${log.exercise}`}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }

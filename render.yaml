@@ -1,0 +1,67 @@
+# Render Blueprint for Kings Body Empire
+#
+# Deploy: Render Dashboard → New → Blueprint → pick this repo.
+# Render reads this file, creates the web service and asks you for the
+# `sync: false` values below (nothing secret is stored in git).
+#
+# Before the first deploy:
+#   1. Run the migrations against your production database from your machine:
+#        DATABASE_URL="<production url>" npm run db:deploy
+#        DATABASE_URL="<production url>" npm run db:seed      # optional
+#   2. Set NEXTAUTH_URL / NEXT_PUBLIC_SITE_URL to the URL Render gives you
+#      (you can edit env vars after the service is created and redeploy).
+#
+# Deploying from a branch other than `main`? Change `branch:` below.
+
+services:
+  - type: web
+    name: kings-body-empire
+    runtime: node
+    plan: free # free instances sleep after 15 minutes of inactivity
+    region: frankfurt # closest to Nigeria; also: oregon, ohio, virginia, singapore
+    branch: main
+    autoDeploy: true
+
+    # `npm ci` runs the postinstall hook (prisma generate); `npm run build`
+    # runs `prisma generate && next build`.
+    buildCommand: npm ci && npm run build
+    # `npm start` is `next start -p ${PORT:-3000}`, so Render's $PORT is honoured.
+    startCommand: npm run start
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      # ---- Database -------------------------------------------------------
+      # Direct Supabase URL (port 5432) or the pooler with
+      # ?pgbouncer=true&connection_limit=1 appended.
+      - key: DATABASE_URL
+        sync: false
+
+      # ---- Auth (NextAuth) ------------------------------------------------
+      - key: NEXTAUTH_SECRET
+        generateValue: true # Render generates a strong secret for you
+      - key: NEXTAUTH_URL
+        sync: false # must equal the deployed URL, e.g. https://kings-body-empire.onrender.com
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false # same value as NEXTAUTH_URL
+
+      # ---- Payments (optional) -------------------------------------------
+      - key: PAYSTACK_SECRET_KEY
+        sync: false # leave empty to run with checkout disabled
+      - key: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+        sync: false
+
+      # ---- Branding / behaviour ------------------------------------------
+      - key: NEXT_PUBLIC_TIMEZONE
+        value: Africa/Lagos
+      - key: NEXT_PUBLIC_SUPPORT_EMAIL
+        sync: false
+      - key: NEXT_PUBLIC_WHATSAPP_URL
+        sync: false
+      - key: NEXT_PUBLIC_INSTAGRAM_URL
+        sync: false
+      # Never create the demo client on a public deployment.
+      - key: SEED_DEMO_CLIENT
+        value: "false"

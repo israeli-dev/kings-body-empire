@@ -1,52 +1,97 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  badRequest,
+  getCurrentUser,
+  notFound,
+  readJson,
+  serverError,
+  unauthorized,
+} from "@/lib/api";
+import { parsePhone, parseText } from "@/lib/validation";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
 
-  const isAdmin = (session.user as any).role === "ADMIN";
+  try {
+    if (user.role === "ADMIN") {
+      const bookings = await prisma.callBooking.findMany({
+        include: { slot: true, user: { select: { name: true, email: true } } },
+        orderBy: { slot: { startTime: "asc" } },
+      });
+      return NextResponse.json(bookings);
+    }
 
-  if (isAdmin) {
-    // Admins see every upcoming booking, with who booked it and their number
     const bookings = await prisma.callBooking.findMany({
-      include: { slot: true, user: { select: { name: true, email: true } } },
-      orderBy: { slot: { startTime: "asc" } },
+      where: { userId: user.id },
+      include: { slot: true },
+      orderBy: { slot: { startTime: "desc" } },
     });
     return NextResponse.json(bookings);
+  } catch {
+    return serverError("Could not load bookings.");
   }
-
-  const bookings = await prisma.callBooking.findMany({
-    where: { userId: (session.user as any).id },
-    include: { slot: true },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(bookings);
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { slotId, phone } = await req.json();
-  if (!slotId) return NextResponse.json({ error: "slotId is required" }, { status: 400 });
-  if (!phone) return NextResponse.json({ error: "A phone number is required so the coach can reach you" }, { status: 400 });
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
+  const body = await readJson(req);
+  if (!body) return badRequest("Send a JSON body with slotId and phone.");
+
+  const slotId = parseText(body.slotId, { min: 1, max: 60 });
+  const phone = parsePhone(body.phone);
+  const notes = body.notes ? parseText(body.notes, { max: 500 }) : null;
+
+  if (!slotId) return badRequest("Pick a slot first.");
+  if (!phone) return badRequest("A phone number is required so the coach can reach you.");
 
   try {
     const booking = await prisma.$transaction(async (tx) => {
-      const slot = await tx.coachAvailability.findUnique({ where: { id: slotId } });
-      if (!slot || slot.isBooked) {
-        throw new Error("SLOT_TAKEN");
-      }
-      await tx.coachAvailability.update({ where: { id: slotId }, data: { isBooked: true } });
-      return tx.callBooking.create({ data: { userId: (session.user as any).id, slotId, phone } });
+      // Claim the slot atomically: only one request can flip isBooked false → true.
+      const claimed = await tx.coachAvailability.updateMany({
+        where: { id: slotId, isBooked: false, startTime: { gte: new Date() } },
+        data: { isBooked: true },
+      });
+      if (claimed.count === 0) throw new Error("SLOT_TAKEN");
+
+      return tx.callBooking.create({
+        data: { userId: user.id, slotId, phone, notes },
+        include: { slot: true },
+      });
     });
-    return NextResponse.json(booking);
-  } catch (err: any) {
-    if (err.message === "SLOT_TAKEN") {
-      return NextResponse.json({ error: "That slot was just booked by someone else — pick another." }, { status: 409 });
+
+    return NextResponse.json(booking, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "SLOT_TAKEN") {
+      return badRequest("That slot was just taken — pick another time.", 409);
     }
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return serverError("Could not book that slot.");
+  }
+}
+
+export async function DELETE(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return badRequest("A booking id is required.");
+
+  const booking = await prisma.callBooking.findUnique({ where: { id } });
+  if (!booking) return notFound("That booking no longer exists.");
+  if (booking.userId !== user.id && user.role !== "ADMIN") {
+    return notFound("That booking no longer exists.");
+  }
+
+  try {
+    await prisma.$transaction([
+      prisma.callBooking.delete({ where: { id } }),
+      prisma.coachAvailability.update({ where: { id: booking.slotId }, data: { isBooked: false } }),
+    ]);
+    return NextResponse.json({ ok: true });
+  } catch {
+    return serverError("Could not cancel that booking.");
   }
 }

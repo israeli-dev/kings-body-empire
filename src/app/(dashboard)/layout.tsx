@@ -1,50 +1,25 @@
-"use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { redirect } from "next/navigation";
+import { DashboardNav } from "@/components/dashboard-nav";
+import { getCurrentUser } from "@/lib/api";
+import type { RankName } from "@/types";
 
-const RANK_COLORS: Record<string, string> = {
-  BRONZE: "#8B5E34",
-  SILVER: "#C8C8C8",
-  GOLD: "#F5B301",
-  DIAMOND: "#B9E4EA",
-};
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [rank, setRank] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/rank")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => data && setRank(data.rank));
-  }, []);
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?callbackUrl=%2Fdashboard");
 
   return (
-    <div>
-      <nav style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, borderBottom: "1px solid #333", flexWrap: "wrap" }}>
-        <Link href="/workouts">Workouts</Link>
-        <Link href="/food">Food</Link>
-        <Link href="/measurements">Measurements</Link>
-        <Link href="/education">Education</Link>
-        <Link href="/book-call">Book a Call</Link>
-        {rank && (
-          <span
-            style={{
-              marginLeft: "auto",
-              padding: "4px 10px",
-              borderRadius: 4,
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#111",
-              background: RANK_COLORS[rank] || "#999",
-            }}
-          >
-            {rank}
-          </span>
-        )}
-        <button onClick={() => signOut({ callbackUrl: "/login" })}>Log out</button>
-      </nav>
-      {children}
+    <div className="flex min-h-screen flex-col">
+      <DashboardNav initialRank={(user.rank as RankName) ?? "BRONZE"} />
+      <main className="container-page flex-1 py-8">{children}</main>
+      <footer className="border-t border-line py-5">
+        <div className="container-page text-xs text-muted">
+          Kings Body Empire · Lagos, Nigeria
+        </div>
+      </footer>
     </div>
   );
 }

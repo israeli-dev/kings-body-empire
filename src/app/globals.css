@@ -2,4 +2,125 @@
 @tailwind components;
 @tailwind utilities;
 
-body { background: #0E0C0A; color: #F7F5EF; }
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg text-ink antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(245, 179, 1, 0.35);
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-semibold tracking-tight;
+  }
+
+  a {
+    @apply transition-colors;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply bg-panel2 text-ink placeholder:text-muted/70;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold
+      transition disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn text-[#14100A];
+    background-image: linear-gradient(135deg, #ffd978 0%, #f5b301 50%, #d99a00 100%);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    @apply brightness-105;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-panel text-ink hover:border-gold/60 hover:text-goldSoft;
+  }
+
+  .btn-ghost {
+    @apply btn text-muted hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn border border-danger/40 bg-transparent text-danger hover:bg-danger/10;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-panel p-6;
+  }
+
+  .card-tight {
+    @apply rounded-xl border border-line bg-panel p-4;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-line bg-panel2 px-3.5 py-2.5 text-sm text-ink
+      outline-none transition placeholder:text-muted/60
+      focus:border-gold/70 focus:ring-2 focus:ring-gold/20;
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-full border border-line bg-panel2 px-2.5 py-1
+      text-[11px] font-semibold uppercase tracking-wider text-muted;
+  }
+
+  .section-title {
+    @apply text-2xl font-semibold sm:text-3xl;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-gold;
+  }
+
+  .muted {
+    @apply text-sm text-muted;
+  }
+
+  .divider {
+    @apply h-px w-full bg-line;
+  }
+
+  .alert {
+    @apply rounded-lg border px-3.5 py-2.5 text-sm;
+  }
+
+  .alert-error {
+    @apply alert border-danger/40 bg-danger/10 text-danger;
+  }
+
+  .alert-success {
+    @apply alert border-success/40 bg-success/10 text-success;
+  }
+
+  .alert-info {
+    @apply alert border-line bg-panel2 text-muted;
+  }
+}

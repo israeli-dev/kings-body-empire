@@ -1,5 +1,9 @@
+// Kings Body Empire — data model
+// Run `npm run db:migrate` (dev) or `npm run db:deploy` (production) after editing.
+
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -27,13 +31,13 @@ enum PaymentStatus {
 }
 
 model User {
-  id               String             @id @default(cuid())
-  name             String
-  email            String             @unique
-  passwordHash     String
-  role             Role               @default(CLIENT)
-  rank             Rank               @default(BRONZE)
-  createdAt        DateTime           @default(now())
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CLIENT)
+  rank         Rank     @default(BRONZE)
+  createdAt    DateTime @default(now())
 
   workoutLogs      WorkoutLog[]
   foodLogs         FoodLog[]
@@ -44,29 +48,33 @@ model User {
 }
 
 model WorkoutLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  exercise  String
-  sets      Int
-  reps      Int
-  weightKg  Float?
-  loggedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise String
+  sets     Int
+  reps     Int
+  weightKg Float?
+  loggedAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
 }
 
 model FoodLog {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   description String
   calories    Int?
   loggedAt    DateTime @default(now())
+
+  @@index([userId, loggedAt])
 }
 
 model MeasurementLog {
   id         String   @id @default(cuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   weightKg   Float?
   heightCm   Float?
   waistCm    Float?
@@ -74,6 +82,8 @@ model MeasurementLog {
   chestCm    Float?
   armCm      Float?
   loggedAt   DateTime @default(now())
+
+  @@index([userId, loggedAt])
 }
 
 model Package {
@@ -85,41 +95,54 @@ model Package {
   priceKobo       Int
   previewVideoUrl String?
   contents        String[]
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
   purchases       PackagePurchase[]
 }
 
 model PackagePurchase {
   id          String        @id @default(cuid())
   userId      String
-  user        User          @relation(fields: [userId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   packageId   String
   package     Package       @relation(fields: [packageId], references: [id])
   amountKobo  Int
   paystackRef String        @unique
   status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?
   createdAt   DateTime      @default(now())
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Book {
-  id        String         @id @default(cuid())
-  title     String
-  slug      String         @unique
-  priceKobo Int
-  fileUrl   String
-  coverUrl  String?
-  purchases BookPurchase[]
+  id          String         @id @default(cuid())
+  title       String
+  slug        String         @unique
+  description String?
+  priceKobo   Int
+  fileUrl     String
+  coverUrl    String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  purchases   BookPurchase[]
 }
 
 model BookPurchase {
   id          String        @id @default(cuid())
   userId      String
-  user        User          @relation(fields: [userId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookId      String
   book        Book          @relation(fields: [bookId], references: [id])
   amountKobo  Int
   paystackRef String        @unique
   status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?
   createdAt   DateTime      @default(now())
+
+  @@index([userId])
+  @@index([status])
 }
 
 model EducationContent {
@@ -129,6 +152,8 @@ model EducationContent {
   videoUrl     String
   thumbnailUrl String?
   createdAt    DateTime @default(now())
+
+  @@index([category])
 }
 
 model CoachAvailability {
@@ -137,14 +162,19 @@ model CoachAvailability {
   endTime   DateTime
   isBooked  Boolean      @default(false)
   booking   CallBooking?
+
+  @@index([startTime])
 }
 
 model CallBooking {
   id        String            @id @default(cuid())
   userId    String
-  user      User              @relation(fields: [userId], references: [id])
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   slotId    String            @unique
   slot      CoachAvailability @relation(fields: [slotId], references: [id])
   phone     String?
+  notes     String?
   createdAt DateTime          @default(now())
+
+  @@index([userId])
 }
