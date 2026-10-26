@@ -105,4 +105,4 @@ npm start   # then re-check a few pages at http://localhost:3000
 ```
 
 - [ ] `npm run build` completes without type errors.
-- [ ] `npm test` shows 28 passing tests.
+- [ ] `npm test` shows 43 passing tests.

@@ -3,6 +3,15 @@
 Target setup: **Vercel** (app) + **Supabase or Neon** (PostgreSQL) + **Paystack**
 (payments). Any Node host that runs `next start` works the same way.
 
+## 0. Sanity-check the connection first
+
+```bash
+npm run db:check      # redacted DATABASE_URL + live connection test
+```
+
+If it reports a problem it tells you exactly which piece of the URL is wrong —
+see the Troubleshooting table in the README.
+
 ## 1. Database
 
 1. Create a Supabase or Neon project and copy the **direct** connection string

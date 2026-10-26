@@ -6,6 +6,11 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import {
+  diagnoseConnectionError,
+  inspectDatabaseUrl,
+  parseDatabaseUrl,
+} from "../src/lib/db-diagnostics";
 
 const prisma = new PrismaClient();
 
@@ -225,11 +230,35 @@ async function main() {
   }
 }
 
+function explainFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const info = parseDatabaseUrl(process.env.DATABASE_URL ?? "");
+  const diagnosis = diagnoseConnectionError(message, info);
+
+  console.error("\n─────────────────────────────────────────────");
+  console.error(`Seed failed: ${diagnosis.title}`);
+  console.error(diagnosis.summary);
+  if (info) console.error(`\nDATABASE_URL: ${info.redacted}`);
+  console.error("\nWhat to try:");
+  for (const fix of diagnosis.fixes) console.error(`  • ${fix}`);
+
+  const staticIssues = info
+    ? inspectDatabaseUrl(info, process.env.DATABASE_URL ?? "").filter(
+        (issue) => issue.severity === "error",
+      )
+    : [];
+  for (const issue of staticIssues) {
+    console.error(`  • ${issue.title}`);
+  }
+  console.error("\nRun `npm run db:check` for a full diagnosis.");
+  console.error("─────────────────────────────────────────────\n");
+}
+
 main()
   .catch((error) => {
-    console.error("Seed failed:", error);
+    explainFailure(error);
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => undefined);
   });

@@ -24,7 +24,7 @@ PostgreSQL · NextAuth (credentials) · Paystack**.
 | Gated e-book downloads (file URL never appears in page HTML) | ✅ |
 | Admin console (`/admin`) with revenue, purchases and calls | ✅ |
 | Seed script (admin + demo client, programs, e-books, lessons, call slots) | ✅ |
-| Tests (28 unit tests), ESLint, `tsc --noEmit` | ✅ |
+| Tests (43 unit tests), ESLint, `tsc --noEmit` | ✅ |
 
 Payments are optional: with no Paystack keys the app runs fine and simply tells
 buyers that checkout is not configured yet.
@@ -68,13 +68,60 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/kings_body_empire?sc
 
 **Option B — Supabase / Neon (no local install):**
 
-1. Create a project, then copy the **direct** connection string (port `5432`,
-   not the 6543 pooler) — Prisma needs it for migrations.
-2. Paste it into `DATABASE_URL`, e.g.
-   `postgresql://postgres.xxxx:password@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?schema=public`
+1. Create a project, then open **Project Settings → Database → Connection
+   string** and copy the **URI** (the direct one — host `db.<project-ref>.supabase.co`,
+   port `5432`). Prisma Migrate cannot use the transaction pooler on port 6543.
+2. Paste it into `DATABASE_URL`, keeping the exact project ref and region the
+   dashboard shows, e.g.
+
+   ```
+   DATABASE_URL="postgresql://postgres:<your-db-password>@db.<project-ref>.supabase.co:5432/postgres?sslmode=require"
+   ```
+
+   The reference ID itself is under **Project Settings → General**. If the ref
+   in your username, the region in the host, or the project's actual region
+   disagree, Supabase's pooler answers with
+   `tenant/user postgres.<ref> not found` — see Troubleshooting below.
 
 > Using the Supabase **pooler** at runtime on Vercel? Append
 > `&pgbouncer=true&connection_limit=1` and keep the direct URL for migrations.
+
+**Option C — inside a GitHub Codespace (no external database):**
+
+```bash
+# Either Docker (available in standard Codespaces):
+docker compose up -d
+
+# …or a plain local Postgres:
+sudo apt-get update
+sudo apt-get install -y postgresql
+sudo service postgresql start
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+sudo -u postgres psql -c "CREATE DATABASE kings_body_empire;"
+```
+
+Then use the local URL from `.env.example`. Codespaces exposes the dev server on
+a forwarded `https://<codespace-name>-3000.app.github.dev` URL, so set:
+
+```bash
+NEXTAUTH_URL="https://<codespace-name>-3000.app.github.dev"
+NEXT_PUBLIC_SITE_URL="https://<codespace-name>-3000.app.github.dev"
+```
+
+and make port **3000** public in the Ports tab (right-click → Port
+Visibility → Public) if you want to open it on your phone. If you stay on
+`http://localhost:3000` in the built-in browser preview, the localhost values
+work as-is.
+
+**Check the connection before anything else:**
+
+```bash
+npm run db:check
+```
+
+It prints the host/user/database with the password masked, flags placeholder
+values, pooler pitfalls and missing `sslmode`, then tries a real connection and
+says whether the schema exists.
 
 ## 4. Create the tables and seed
 
@@ -82,6 +129,10 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/kings_body_empire?sc
 npm run db:migrate   # applies prisma/migrations/*
 npm run db:seed      # admin + demo client, programs, e-books, lessons, call slots
 ```
+
+On an empty hosted database you can do both at once with `npm run db:setup`.
+If anything fails, the seed now prints a diagnosis instead of a raw Prisma
+stack trace — the same information `npm run db:check` gives you.
 
 `db:migrate` runs `prisma migrate dev`; on a brand-new database it will create
 a shadow database, so the user in `DATABASE_URL` needs permission to create
@@ -132,6 +183,8 @@ Seeded accounts (change these before deploying):
 | `npm run lint` | ESLint (`next lint`) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Unit tests (Vitest) |
+| `npm run db:check` | Diagnose `DATABASE_URL` (redacted) and test the connection |
+| `npm run db:setup` | `db:deploy` + `db:seed` in one go (fresh database) |
 | `npm run db:migrate` | Create/apply migrations in development |
 | `npm run db:deploy` | Apply existing migrations (production/CI) |
 | `npm run db:push` | Push the schema without migration files (quick prototyping) |
@@ -210,7 +263,7 @@ covers every feature (including the no-Paystack-keys path).
 Quick automated checks:
 
 ```bash
-npm test            # 28 unit tests
+npm test            # 43 unit tests
 npm run typecheck
 npm run lint
 npm run build
@@ -221,6 +274,31 @@ npm run build
 See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (Vercel + Supabase/Neon +
 Paystack). Short version: set the env vars, run `npm run db:deploy` against the
 production database, deploy.
+
+## Troubleshooting the database
+
+Start with `npm run db:check` — it explains the exact failure and the fix.
+The common ones:
+
+| Error you see | What it means | Fix |
+| --- | --- | --- |
+| `FATAL: (ENOTFOUND) tenant/user postgres.<ref> not found` | Supabase's **pooler** does not know that project ref: wrong region host, wrong/old connection string, or the project is paused/deleted | Re-copy the URI from Supabase → Project Settings → Database. Resume the project if paused. Or use the direct host `db.<ref>.supabase.co:5432` |
+| `P1001` / `getaddrinfo ENOTFOUND` | Hostname in `DATABASE_URL` is wrong | Re-copy the connection string |
+| `ECONNREFUSED 127.0.0.1:5432` | No local Postgres running | `docker compose up -d` or start the Postgres service |
+| `28P01 password authentication failed` | Bad password / unencoded characters | Re-copy it; encode `@ # / :` as `%40 %23 %2F %3A` |
+| `P1003` / `database "…" does not exist` | Wrong database name | Supabase/Neon use `postgres`; locally `createdb kings_body_empire` |
+| `P1000` / timeout / `ETIMEDOUT` | Credentials rejected or IP not allowed | Supabase → Database → Network Restrictions; check the project is not paused |
+| `table "User" does not exist` / `P2021` | Database reachable but migrations not applied | `npm run db:migrate` (dev) or `npm run db:deploy` |
+| `tenant/user not found` only in Codespaces | Codespace URL/credentials not set | See "Option C — inside a GitHub Codespace" above |
+| `self-signed certificate` | TLS mismatch | Append `?sslmode=require` (or `?sslmode=no-verify` locally) |
+
+Two things to know about Supabase URLs:
+
+- **Transaction pooler** (port `6543`) is fine for the running app but Prisma
+  Migrate needs the **direct** connection (port `5432`).
+- `prisma migrate dev` also creates a *shadow database*; if your provider does
+  not allow `CREATE DATABASE`, run `npm run db:push` once, or set
+  `shadowDatabaseUrl` in `prisma/schema.prisma`.
 
 ## Known limitations / next steps
 
