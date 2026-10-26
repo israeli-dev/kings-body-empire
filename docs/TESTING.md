@@ -32,6 +32,24 @@ Everything below runs without Paystack keys except step 7.
       straight to the API returns a 400.
 - [ ] Log in with a wrong password → "That email or password is not right."
 
+## 2b. Forgot password
+
+- [ ] `/login` shows a **Forgot password?** link above the password field.
+- [ ] `/forgot-password` with a bogus email shows the same "Check your inbox"
+      message as a real one (no account enumeration).
+- [ ] With a real account: submit, then find the link in the terminal
+      (`✉️ EMAIL (console transport…)`), or in your inbox if Resend/SMTP is set.
+- [ ] Open the link → set a new password → you land on `/dashboard` signed in.
+- [ ] Log out and log in with the **new** password; the old one fails.
+- [ ] Re-open the same reset link → "already been used".
+- [ ] Request a second link, then use the **first** → rejected (only the newest
+      link works).
+- [ ] Submit a password like `onlyletters` → "must include at least one letter
+      and one number".
+- [ ] Truncate the token in the URL → friendly "That link looks broken" page.
+- [ ] Check the login/signup pages show the gym photo behind the form, and the
+      text stays readable on a narrow window.
+
 ## 3. Logging (as the demo client)
 
 - [ ] `/workouts`: log "Bench press, 4 sets, 8 reps, 70kg" → appears in Recent

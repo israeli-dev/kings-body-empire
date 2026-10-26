@@ -59,7 +59,15 @@ export function LoginForm() {
         </div>
 
         <div>
-          <label className="label" htmlFor="password">Password</label>
+          <div className="flex items-baseline justify-between gap-3">
+            <label className="label" htmlFor="password">Password</label>
+            <Link
+              href="/forgot-password"
+              className="mb-1.5 text-xs text-gold hover:text-goldSoft"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             id="password"
             type="password"
@@ -70,6 +78,12 @@ export function LoginForm() {
             required
           />
         </div>
+
+        {searchParams.get("reset") && !error && (
+          <p className="alert-success">
+            Password updated. Log in with your new password.
+          </p>
+        )}
 
         {error && <p className="alert-error">{error}</p>}
 

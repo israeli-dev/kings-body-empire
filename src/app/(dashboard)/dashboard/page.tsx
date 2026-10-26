@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     bookPurchases,
     recentWorkouts,
     recentFoods,
+    cheapestPackage,
   ] = await Promise.all([
     getRankOverview(user.id),
     prisma.workoutLog.findMany({
@@ -69,6 +70,12 @@ export default async function DashboardPage() {
       where: { userId: user.id },
       orderBy: { loggedAt: "desc" },
       take: 4,
+    }),
+    // Price shown in the upgrade card always comes from the catalogue.
+    prisma.package.findFirst({
+      where: { isActive: true },
+      orderBy: { priceKobo: "asc" },
+      select: { priceKobo: true },
     }),
   ]);
 
@@ -298,7 +305,9 @@ export default async function DashboardPage() {
           <div>
             <h2 className="text-lg font-semibold">Ready for a structured plan?</h2>
             <p className="mt-1 text-sm text-muted">
-              Programs from {formatNaira(2_500_000)} — training, food templates and check-ins.
+              {cheapestPackage
+                ? `Programs from ${formatNaira(cheapestPackage.priceKobo)} — training, food templates and check-ins.`
+                : "Training plans, food templates and weekly check-ins."}
             </p>
           </div>
           <Link href="/pricing" className="btn-primary">See programs</Link>
