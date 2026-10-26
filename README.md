@@ -407,6 +407,37 @@ Rules worth knowing:
 - The `activity` array is one cell per day in the range, which is exactly what
   the heatmap draws.
 
+## Referrals
+
+Every client gets a code (created the first time they open the dashboard) and a
+share link: `https://<site>/?ref=CODE`.
+
+1. The middleware stores the code in a 30-day `kbe_ref` cookie when someone
+   lands with `?ref=…`, so browsing first and signing up tomorrow still counts.
+2. Signup reads the cookie (or a `referralCode` field in the body) and creates a
+   `PENDING` `Referral`. Unknown codes, self-referrals and repeat referees are
+   ignored — `Referral.refereeId` is unique.
+3. The referral **qualifies on the invited client's first paid program**
+   (`markPurchasePaid`, which both the callback and webhook call).
+4. Both sides get **7 days** (`REFERRAL_REWARD_DAYS`): a live subscription has
+   `currentPeriodEnd` pushed out; a referrer with no plan has the days banked in
+   `User.referralBonusDays` and applied to their next subscription automatically
+   (`saveSubscription`).
+5. The referrer gets a "7 free days" email (`src/lib/mailer.ts` →
+   `referralRewardEmail`; console transport when no provider is configured).
+
+| Piece | Where |
+| --- | --- |
+| Code rules, links, stats (pure, unit tested) | `src/lib/referrals-core.ts` |
+| DB, qualification, rewards, overview | `src/lib/referrals.ts` |
+| Capture `?ref=` in a cookie | `src/middleware.ts` |
+| API | `GET /api/referrals` |
+| Dashboard card | `src/components/referral-card.tsx` |
+
+Seeded codes for testing: `COACHKBE` (admin) and `DEMOKBE7` (demo client).
+Attribution is one level deep — no chains, no cash payouts, so nothing to
+reconcile at the end of the month.
+
 ## Testing
 
 See **[docs/TESTING.md](docs/TESTING.md)** for a click-through checklist that

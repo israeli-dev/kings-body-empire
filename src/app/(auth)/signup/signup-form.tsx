@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { REFERRAL_COOKIE, normaliseReferralCode } from "@/lib/referrals-core";
 
 export function SignupForm() {
   const router = useRouter();
@@ -16,6 +17,17 @@ export function SignupForm() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  // The landing page drops `?ref=CODE` into a 30-day cookie; show that the
+  // invite will be honoured so nobody wonders whether the link worked.
+  useEffect(() => {
+    const raw = document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith(`${REFERRAL_COOKIE}=`))
+      ?.split("=")[1];
+    setInviteCode(normaliseReferralCode(raw ? decodeURIComponent(raw) : null));
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -38,7 +50,7 @@ export function SignupForm() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, referralCode: inviteCode ?? undefined }),
     });
 
     if (!res.ok) {
@@ -70,6 +82,13 @@ export function SignupForm() {
       <p className="mt-1 text-sm text-muted">
         Free forever for logging. Upgrade only when you want coaching.
       </p>
+
+      {inviteCode && (
+        <p className="alert-success mt-4">
+          You were invited with <span className="font-semibold">{inviteCode}</span> — you and your
+          friend each get 7 free days when you start a program.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>

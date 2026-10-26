@@ -90,6 +90,31 @@ Everything below runs without Paystack keys except step 7.
 - [ ] Charts are drawn from the server HTML (view source: `<svg>` is present,
       no client-side chart library).
 
+## 4c. Referrals (7 days each side)
+
+- [ ] Run `npm run db:seed`. The console prints `COACHKBE` and `DEMOKBE7`.
+- [ ] Visit `/?ref=DEMOKBE7` → DevTools → Application → Cookies shows
+      `kbe_ref=DEMOKBE7` with a 30-day expiry.
+- [ ] `/signup` shows "You were invited with DEMOKBE7 — you and your friend each
+      get 7 free days…".
+- [ ] Sign up a new account → `/dashboard` shows the referral card with a fresh
+      code, a `/?ref=…` link and a **Copy link** button.
+- [ ] `/admin` is untouched; `GET /api/referrals` returns `code`, `link`,
+      `stats` and `invites`.
+- [ ] Pay for a program as the new client (test card) → in `/admin` the demo
+      client's subscription `currentPeriodEnd` moves **7 days later**, and the
+      new client's does too.
+- [ ] The demo client's terminal/log shows the "7 free days" email (console
+      transport) when no mail provider is configured.
+- [ ] Log in as the demo client → dashboard card shows **Invited 1 · Started a
+      program 1 · Days earned 7**.
+- [ ] Referral code that does not exist (`/?ref=NOPE1234`) → cookie is set, but
+      signup succeeds and no referral row is created (check `/admin`/Studio).
+- [ ] A client cannot refer themselves: signing up with your own code is
+      ignored (no `Referral` row).
+- [ ] A client who already has a subscription and no referral code gets one the
+      first time they open `/dashboard`.
+
 ## 5. Call booking
 
 - [ ] As **admin**, `/book-call` shows the "Add availability" form; add a slot a
@@ -164,4 +189,4 @@ npm start   # then re-check a few pages at http://localhost:3000
 ```
 
 - [ ] `npm run build` completes without type errors.
-- [ ] `npm test` shows 89 passing tests.
+- [ ] `npm test` shows 101 passing tests.

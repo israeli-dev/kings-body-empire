@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { qualifyReferral } from "./referrals";
 
 /** Look up a pending/paid purchase by the Paystack reference, in either table. */
 export async function findPurchaseByReference(reference: string) {
@@ -47,6 +48,14 @@ export async function markPurchasePaid(reference: string, amountPaidKobo: number
 
   if (amountPaidKobo < purchase.amountKobo) {
     return { ok: false as const, reason: "AMOUNT_MISMATCH" as const };
+  }
+
+  // A client's first paid program is what converts a referral into 7 free days
+  // for both sides. Idempotent, so duplicate webhooks are harmless.
+  if (purchase.kind === "package") {
+    await qualifyReferral(purchase.userId).catch((error) => {
+      console.error("[referrals] qualification failed:", error);
+    });
   }
 
   if (purchase.status === "PAID") {

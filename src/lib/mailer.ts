@@ -161,3 +161,61 @@ export function passwordResetEmail(link: string, expiresInMinutes: number): Mail
 
   return { to: "", subject, text, html };
 }
+
+/** Sent to the referrer when an invite pays and the bonus days land. */
+export function referralRewardEmail(input: {
+  referrerName: string;
+  refereeName: string;
+  rewardDays: number;
+  dashboardUrl: string;
+}): MailMessage {
+  const firstName = input.referrerName.split(" ")[0] || "there";
+  const subject = `${input.rewardDays} free days — ${input.refereeName} just joined`;
+
+  const text = [
+    `Nice one, ${firstName}.`,
+    "",
+    `${input.refereeName} signed up with your referral code and paid for their first program.`,
+    `You have both earned ${input.rewardDays} extra days of access.`,
+    "",
+    "If you have a live program, the days were added to your current period.",
+    "If not, they are banked and will be added to your first month.",
+    "",
+    `See where things stand: ${input.dashboardUrl}`,
+    "",
+    "Keep sharing your code — every friend who subscribes adds another week.",
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#0E0C0A;padding:32px 16px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#171410;border:1px solid #2C251C;border-radius:16px;">
+      <tr>
+        <td style="padding:28px 28px 8px;">
+          <p style="margin:0;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#F5B301;">Kings Body Empire</p>
+          <h1 style="margin:12px 0 0;font-size:22px;color:#F7F5EF;font-weight:600;">${input.rewardDays} free days added</h1>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#A79F94;">
+            ${input.refereeName} signed up with your referral code and paid for their first program.
+            You have both earned ${input.rewardDays} extra days of access.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:20px 28px;">
+          <a href="${input.dashboardUrl}" style="display:inline-block;background:#F5B301;color:#14100A;text-decoration:none;font-weight:700;font-size:14px;padding:12px 20px;border-radius:10px;">Open your dashboard</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 28px 24px;">
+          <p style="margin:0;font-size:12px;line-height:1.6;color:#A79F94;">
+            Already on a program? The days were added to your current period. Not subscribed yet?
+            They are banked and will be applied to your first month.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  return { to: "", subject, text, html };
+}

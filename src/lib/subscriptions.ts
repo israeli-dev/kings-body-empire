@@ -8,6 +8,7 @@ import {
   type PaystackSubscription,
 } from "./paystack";
 import {
+  addDays,
   daysLeft,
   fallbackPeriodEnd,
   parsePaystackDate,
@@ -96,13 +97,38 @@ export async function saveSubscription(input: {
   currentPeriodEnd: Date;
   nextPaymentDate?: Date | null;
 }) {
+  const existing = await prisma.subscription.findUnique({
+    where: { userId_packageId: { userId: input.userId, packageId: input.packageId } },
+    select: { id: true },
+  });
+
+  let currentPeriodEnd = input.currentPeriodEnd;
+  let nextPaymentDate = input.nextPaymentDate ?? input.currentPeriodEnd;
+
+  if (!existing) {
+    // Referral bonus days earned before they had a plan are applied here, once.
+    const owner = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { referralBonusDays: true },
+    });
+    const bonusDays = owner?.referralBonusDays ?? 0;
+    if (bonusDays > 0) {
+      currentPeriodEnd = addDays(currentPeriodEnd, bonusDays);
+      nextPaymentDate = addDays(nextPaymentDate, bonusDays);
+      await prisma.user.update({
+        where: { id: input.userId },
+        data: { referralBonusDays: 0 },
+      });
+    }
+  }
+
   const data = {
     subscriptionCode: input.subscriptionCode,
     emailToken: input.emailToken,
     status: input.status,
     amountKobo: input.amountKobo,
-    currentPeriodEnd: input.currentPeriodEnd,
-    nextPaymentDate: input.nextPaymentDate ?? input.currentPeriodEnd,
+    currentPeriodEnd,
+    nextPaymentDate,
     cancelledAt: input.status === "CANCELLED" ? new Date() : null,
   };
 

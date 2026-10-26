@@ -9,6 +9,8 @@ import { dayKey } from "@/lib/rank-core";
 import { formatNaira } from "@/lib/money";
 import { getUserSubscriptions } from "@/lib/subscriptions";
 import { SubscriptionCard } from "@/components/subscription-card";
+import { ReferralCard } from "@/components/referral-card";
+import { getReferralOverview } from "@/lib/referrals";
 import type { RankName } from "@/types";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -35,6 +37,7 @@ export default async function DashboardPage() {
     recentFoods,
     cheapestPackage,
     subscriptions,
+    referralOverview,
   ] = await Promise.all([
     getRankOverview(user.id),
     prisma.workoutLog.findMany({
@@ -81,6 +84,7 @@ export default async function DashboardPage() {
       select: { priceKobo: true },
     }),
     getUserSubscriptions(user.id, now),
+    getReferralOverview(user.id),
   ]);
 
   const activeDayKeys = new Set(
@@ -320,6 +324,8 @@ export default async function DashboardPage() {
           </div>
         </section>
       </div>
+
+      <ReferralCard data={referralOverview} />
 
       {packagePurchases.length === 0 && (
         <section className="card flex flex-wrap items-center justify-between gap-4 border-gold/25">

@@ -36,6 +36,15 @@ enum BillingInterval {
   ONE_OFF
 }
 
+enum ReferralStatus {
+  /// Signed up with someone's code, no payment yet.
+  PENDING
+  /// Paid their first program charge.
+  QUALIFIED
+  /// Reward days applied to both sides.
+  REWARDED
+}
+
 enum SubscriptionStatus {
   /// Paid and renewing.
   ACTIVE
@@ -57,6 +66,17 @@ model User {
   role         Role     @default(CLIENT)
   rank         Rank     @default(BRONZE)
   createdAt    DateTime @default(now())
+
+  /// Shareable code used in /?ref=CODE. Generated on first visit to the dashboard.
+  referralCode      String?  @unique
+  /// Set once, at signup, when the account was created through someone's link.
+  referredById      String?
+  referredBy        User?    @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referralsMade     User[]   @relation("UserReferrals")
+  /// Reward days waiting for the client's next subscription (referrer with no plan).
+  referralBonusDays Int      @default(0)
+  referralsGiven    Referral[] @relation("ReferralReferrer")
+  referralReceived  Referral?  @relation("ReferralReferee")
 
   workoutLogs      WorkoutLog[]
   foodLogs         FoodLog[]
@@ -167,6 +187,25 @@ model Subscription {
   @@unique([userId, packageId])
   @@index([status])
   @@index([currentPeriodEnd])
+}
+
+/// One row per invited client. `refereeId` is unique, so nobody can be referred twice.
+model Referral {
+  id          String         @id @default(cuid())
+  referrerId  String
+  referrer    User           @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId   String         @unique
+  referee     User           @relation("ReferralReferee", fields: [refereeId], references: [id], onDelete: Cascade)
+  /// The code that was used, kept for auditing.
+  code        String
+  status      ReferralStatus @default(PENDING)
+  rewardDays  Int            @default(7)
+  qualifiedAt DateTime?
+  rewardedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([referrerId])
+  @@index([status])
 }
 
 /// A renewal charge. Doubles as the webhook replay guard: `invoiceCode` is unique.
