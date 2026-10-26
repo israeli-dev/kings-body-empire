@@ -19,8 +19,21 @@ export const metadata: Metadata = {
     siteName: "Kings Body Empire",
     type: "website",
     locale: "en_NG",
+    images: [
+      {
+        url: "/images/hero-gym.jpg",
+        width: 1376,
+        height: 768,
+        alt: "Athletes training in a dark gym lit by warm gold light",
+      },
+    ],
   },
-  twitter: { card: "summary_large_image", title: "Kings Body Empire" },
+  twitter: {
+    card: "summary_large_image",
+    title: "Kings Body Empire",
+    description: "Train. Eat. Track. Transform.",
+    images: ["/images/hero-gym.jpg"],
+  },
 };
 
 export const viewport: Viewport = {

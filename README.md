@@ -293,6 +293,35 @@ See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (Vercel + Supabase/Neon +
 Paystack). Short version: set the env vars, run `npm run db:deploy` against the
 production database, deploy.
 
+## Images and branding
+
+Two photographs live in `public/images/`:
+
+| File | Where it is used |
+| --- | --- |
+| `hero-gym.jpg` (1376×768) | Landing-page hero background + social share preview (Open Graph/Twitter) |
+| `coaching.jpg` (768×1376, portrait) | "Coaching that knows your name" section on the landing page |
+
+They are AI-generated for this project, so you own them and there is no stock
+licence to renew. To swap in real photos of your own clients or gym:
+
+1. Drop the new file into `public/images/` (keep the same filename, or update the
+   `src` in `src/app/(marketing)/page.tsx`).
+2. Aim for a **dark, warm-lit frame** — the hero is layered under gold gradients,
+   so bright white shots wash out the headline.
+3. Hero: landscape, at least 1600px wide. Coach photo: portrait, at least 800px
+   wide. Keep each file under ~300 KB (JPEG quality 80 is plenty).
+4. Update the `alt` text to describe the new photo — it is read by screen readers
+   and helps SEO.
+5. If you change the hero image, also update `images[0].url` in
+   `src/app/layout.tsx` so link previews on WhatsApp/X still look right.
+
+Next.js optimises both automatically (`/_next/image?...`): the browser gets a
+resized WebP/JPEG per screen size, so you do not need multiple sizes yourself.
+
+> Using real clients in photos? Get written permission before publishing, and
+> avoid showing anyone's face in a "before" photo without consent.
+
 ## Troubleshooting the database
 
 Start with `npm run db:check` — it explains the exact failure and the fix.

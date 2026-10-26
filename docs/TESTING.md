@@ -5,7 +5,15 @@ Everything below runs without Paystack keys except step 7.
 
 ## 1. Public site
 
-- [ ] `/` loads: hero, features, programs, how it works, testimonials, FAQ, footer.
+- [ ] `/` loads: hero, features, programs, how it works, coach section,
+      education/books teasers, testimonials, FAQ, footer.
+- [ ] Hero gym photo fills the background behind the headline and the
+      dashboard preview card stays readable over it (check on a narrow window
+      too — the overlay should keep the text legible).
+- [ ] The coach photo appears in the "Coaching that knows your name" section
+      with its caption card at the bottom.
+- [ ] Both images appear instantly on reload (cached) and are not distorted
+      (no stretched faces).
 - [ ] Nav links work on mobile (Menu button) and desktop.
 - [ ] `/pricing` lists the three seeded programs with naira prices and contents.
 - [ ] `/books` lists three e-books; each **Details** link opens `/books/<slug>`.

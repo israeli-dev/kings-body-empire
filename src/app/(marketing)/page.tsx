@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { RankBadge } from "@/components/rank-badge";
 import { formatNaira } from "@/lib/money";
@@ -13,7 +14,26 @@ export default function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-line bg-panel-fade">
+      <section className="relative isolate overflow-hidden border-b border-line">
+        {/* Background photograph */}
+        <Image
+          src="/images/hero-gym.jpg"
+          alt="Three athletes training in a dark gym lit by warm gold light"
+          fill
+          priority
+          sizes="100vw"
+          className="-z-10 object-cover object-[62%_center] sm:object-center"
+        />
+        {/* Readability overlays: strong on mobile, softer on large screens */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-gradient-to-r from-bg via-bg/95 to-bg/60 lg:via-bg/85 lg:to-bg/25"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-gradient-to-t from-bg via-bg/20 to-bg/50"
+        />
+
         <div className="container-page grid gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr] lg:py-28">
           <div className="animate-rise">
             <p className="eyebrow">Coaching for the long game</p>
@@ -36,7 +56,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <dl className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-line pt-6">
+            <dl className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-white/10 pt-6">
               <div>
                 <dt className="text-xs uppercase tracking-wider text-muted">Ranks</dt>
                 <dd className="mt-1 text-2xl font-semibold">4</dd>
@@ -53,7 +73,7 @@ export default function HomePage() {
           </div>
 
           {/* Dashboard preview card */}
-          <div className="animate-rise rounded-3xl border border-line bg-panel/80 p-6 shadow-glow">
+          <div className="animate-rise rounded-3xl border border-white/10 bg-panel/90 p-6 shadow-glow backdrop-blur-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted">This week</p>
@@ -178,6 +198,62 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      {/* Coach */}
+      <section className="border-b border-line py-16 sm:py-20">
+        <div className="container-page grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="relative order-2 lg:order-1">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-line">
+              <Image
+                src="/images/coaching.jpg"
+                alt="A coach standing in the gym with a clipboard while a client trains behind him"
+                fill
+                sizes="(min-width: 1024px) 45vw, 100vw"
+                className="object-cover object-top"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-t from-bg/80 via-transparent to-transparent"
+              />
+            </div>
+            <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-bg/85 px-4 py-3 backdrop-blur">
+              <p className="text-xs uppercase tracking-wider text-gold">Your coach</p>
+              <p className="mt-1 text-sm text-ink">
+                One plan, one person keeping you honest — not an app that forgets you.
+              </p>
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2">
+            <p className="eyebrow">The person behind the plan</p>
+            <h2 className="section-title mt-3">Coaching that knows your name</h2>
+            <p className="mt-4 text-sm text-muted">
+              Programs are built around the food in your kitchen and the equipment in your
+              gym — or your living room. You get feedback, not just a PDF, and a coach who
+              notices when you go quiet.
+            </p>
+
+            <ul className="mt-6 space-y-3 text-sm">
+              {[
+                "Training blocks that progress every week, not random workouts",
+                "Meal templates using Nigerian staples and real portions",
+                "Form checks and adjustments on your lifts",
+                "A real person on the other end of the WhatsApp message",
+              ].map((item) => (
+                <li key={item} className="flex gap-2 text-muted">
+                  <span className="text-gold" aria-hidden="true">✓</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/pricing" className="btn-primary">Work with the coach</Link>
+              <Link href="/signup" className="btn-secondary">Start free first</Link>
+            </div>
+          </div>
         </div>
       </section>
 
