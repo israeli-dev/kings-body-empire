@@ -25,7 +25,7 @@ const PACKAGES = [
     slug: "foundation",
     title: "Foundation",
     durationWeeks: 4,
-    priceKobo: 2_500_000,
+    priceKobo: 2_000_000, // ₦20,000
     description:
       "Four weeks to build the habit. A training plan you can finish, a food template built around Nigerian meals and one check-in a week.",
     contents: [
@@ -39,7 +39,7 @@ const PACKAGES = [
     slug: "transformation",
     title: "Transformation",
     durationWeeks: 12,
-    priceKobo: 7_500_000,
+    priceKobo: 2_500_000, // ₦25,000
     description:
       "The full programme. Progressive training blocks, meal planning and coaching on consistency — the boring part that actually works.",
     contents: [
@@ -54,7 +54,7 @@ const PACKAGES = [
     slug: "elite-1-on-1",
     title: "Elite 1-on-1",
     durationWeeks: 8,
-    priceKobo: 15_000_000,
+    priceKobo: 3_000_000, // ₦30,000
     description:
       "Direct access to the coach. A plan built around your body, your schedule and your kitchen, adjusted every two weeks.",
     contents: [

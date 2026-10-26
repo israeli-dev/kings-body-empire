@@ -304,6 +304,37 @@ Set the webhook URL in the Paystack dashboard to
 `https://<your-domain>/api/paystack/webhook`. Locally, expose the dev server
 with a tunnel (e.g. `ngrok http 3000`) and use that URL.
 
+## Changing program prices
+
+Prices are stored in **kobo** (₦20,000 = `2_000_000`) because that is what Paystack
+charges in. The **database is the source of truth**: `/pricing`, the Buy button and
+the Paystack amount all read `Package.priceKobo`.
+
+There are three places to know about:
+
+| File | What it controls |
+| --- | --- |
+| `prisma/seed.ts` → `PACKAGES[].priceKobo` | The catalogue written by `npm run db:seed` |
+| `src/lib/content.ts` → `FEATURED_PROGRAMS[].priceKobo` | The three teaser cards on the landing page (static, no DB) |
+| Database rows in `Package` | What customers actually pay |
+
+To change a price:
+
+1. Edit the amount in `prisma/seed.ts` **and** `src/lib/content.ts` (keep them equal).
+2. Apply it to the database — either:
+   - `npm run db:seed` (idempotent upsert; also refreshes titles, descriptions and
+     `contents` from the seed file), **or**
+   - `npm run db:studio` → `Package` → edit `priceKobo` if you only want to touch
+     prices and leave hand-edited copy alone. Remember the kobo conversion:
+     ₦20,000 → `2000000`.
+3. Redeploy (or restart `npm run dev`) so the landing-page teaser picks up the new
+   numbers.
+
+The dashboard's "Programs from …" line is read from the cheapest active package in
+the database, so it never needs editing. Want to sell a program without showing it?
+Set `Package.isActive = false` in Studio — it disappears from `/pricing` and
+checkout, but existing purchases stay valid.
+
 ## Testing
 
 See **[docs/TESTING.md](docs/TESTING.md)** for a click-through checklist that

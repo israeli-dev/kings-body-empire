@@ -91,13 +91,17 @@ export const FAQ = [
   },
 ] as const;
 
-/** Shown on the landing page; the real catalogue lives in the database. */
+/**
+ * Shown on the landing page; the real catalogue (and the price people actually
+ * pay) lives in the database. Keep these three prices in step with
+ * `PACKAGES` in prisma/seed.ts — /pricing and checkout always read the database.
+ */
 export const FEATURED_PROGRAMS = [
   {
     slug: "foundation",
     title: "Foundation",
     durationWeeks: 4,
-    priceKobo: 2_500_000,
+    priceKobo: 2_000_000,
     description:
       "Four weeks to build the habit: training plan, food template and weekly check-ins.",
   },
@@ -105,7 +109,7 @@ export const FEATURED_PROGRAMS = [
     slug: "transformation",
     title: "Transformation",
     durationWeeks: 12,
-    priceKobo: 7_500_000,
+    priceKobo: 2_500_000,
     description:
       "The full programme. Progressive training blocks, meal planning and rank coaching.",
   },
@@ -113,7 +117,7 @@ export const FEATURED_PROGRAMS = [
     slug: "elite-1-on-1",
     title: "Elite 1-on-1",
     durationWeeks: 8,
-    priceKobo: 15_000_000,
+    priceKobo: 3_000_000,
     description:
       "Direct access to the coach: fortnightly calls, form reviews and a plan built around you.",
   },
