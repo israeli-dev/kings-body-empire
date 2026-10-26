@@ -25,6 +25,10 @@ export function SignupForm() {
       setError("Use at least 8 characters for your password.");
       return;
     }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("Include at least one letter and one number in your password.");
+      return;
+    }
     if (password !== confirm) {
       setError("Those passwords do not match.");
       return;
@@ -105,7 +109,9 @@ export function SignupForm() {
             onChange={(event) => setPassword(event.target.value)}
             required
           />
-          <p className="mt-1 text-xs text-muted">At least 8 characters.</p>
+          <p className="mt-1 text-xs text-muted">
+            At least 8 characters, including a letter and a number.
+          </p>
         </div>
 
         <div>

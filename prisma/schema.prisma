@@ -45,6 +45,22 @@ model User {
   packagePurchases PackagePurchase[]
   bookPurchases    BookPurchase[]
   callBookings     CallBooking[]
+  resetTokens      PasswordResetToken[]
+}
+
+/// Single-use, hashed password-reset tokens. Only a SHA-256 hash is stored, so
+/// a database leak cannot be replayed to take over an account.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model WorkoutLog {

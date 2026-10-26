@@ -257,6 +257,42 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Community band */}
+      <section className="relative isolate overflow-hidden border-b border-line">
+        <Image
+          src="/images/community.jpg"
+          alt="A boxer resting against a heavy bag in a gym"
+          fill
+          sizes="100vw"
+          className="-z-10 object-cover object-[35%_center]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-gradient-to-r from-bg via-bg/90 to-bg/40"
+        />
+        <div className="container-page py-20 lg:py-24">
+          <div className="max-w-xl">
+            <p className="eyebrow">Everything is welcome here</p>
+            <h2 className="section-title mt-3">
+              Beginners. Returners. Lifters. Fighters.
+            </h2>
+            <p className="mt-4 text-sm text-muted">
+              Kings Body Empire is not a bodybuilding club. It is a place to log honest
+              work — whether that is three sets in a home gym or a full session in the
+              boxing gym. Your rank reflects showing up, not your starting point.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/signup" className="btn-primary">
+                Start logging free
+              </Link>
+              <Link href="/education" className="btn-secondary">
+                Browse the library
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Education + books teaser */}
       <section className="border-b border-line py-16 sm:py-20">
         <div className="container-page grid gap-5 lg:grid-cols-2">

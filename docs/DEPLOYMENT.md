@@ -73,6 +73,8 @@ Project → **Settings → Environment Variables**. Add each for **Production**
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | `pk_live_…` |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | your real support email |
 | `NEXT_PUBLIC_TIMEZONE` | `Africa/Lagos` |
+| `RESEND_API_KEY` | `re_…` — enables password-reset emails (or set `SMTP_URL`) |
+| `EMAIL_FROM` | verified sender, e.g. `Kings Body Empire <no-reply@your-domain.com>` |
 | `NEXT_PUBLIC_WHATSAPP_URL` | `https://wa.me/234…` (optional) |
 | `NEXT_PUBLIC_INSTAGRAM_URL` | your profile URL (optional) |
 
@@ -162,6 +164,35 @@ starts. Never run `prisma migrate dev` in production.
 
 ---
 
+## Password-reset email (both platforms)
+
+`/forgot-password` works with **no configuration at all** — the reset link is
+printed in the server log:
+
+```
+✉️  EMAIL (console transport — no provider configured)
+   To: coach@example.com
+   Subject: Reset your Kings Body Empire password
+   … http://localhost:3000/reset-password/<token>
+```
+
+For real users, pick one transport (no code change — just env vars):
+
+**Resend (recommended)**
+
+1. <https://resend.com> → API Keys → create one.
+2. Verify your domain (or use the sandbox `onboarding@resend.dev` sender to test
+   with your own address only).
+3. Set `RESEND_API_KEY` and `EMAIL_FROM="Kings Body Empire <no-reply@your-domain.com>"`.
+
+**SMTP (Gmail/Zoho/Mailtrap)**
+
+Set `SMTP_URL`, e.g. `smtp://user:app-password@smtp.gmail.com:587`
+(Gmail needs an app password with 2FA on) and `EMAIL_FROM`.
+
+Check it after deploying: request a reset for your own account, confirm the mail
+arrives, and watch the platform logs for `[mailer]` errors if it does not.
+
 ## Paystack (both platforms)
 
 1. Paystack Dashboard → **Settings → API Keys & Webhooks**.
@@ -181,6 +212,8 @@ starts. Never run `prisma migrate dev` in production.
       (empty cards = seed never ran)
 - [ ] Sign up → log a workout → rank badge appears
 - [ ] Log out → `/dashboard` redirects to `/login` and back after logging in
+- [ ] **Forgot password**: request a link, open it, set a new password, and get
+      signed in — then confirm the same link no longer works
 - [ ] Admin account can add a call slot; client can book and cancel it
 - [ ] Paystack test purchase → `/checkout/success` → program shows on dashboard
 - [ ] `/api/books/<slug>/download` blocked in a private window before buying

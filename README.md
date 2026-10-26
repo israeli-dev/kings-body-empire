@@ -15,6 +15,7 @@ PostgreSQL · NextAuth (credentials) · Paystack**.
 | --- | --- |
 | Landing page, programs (`/pricing`), e-books (`/books`) | ✅ |
 | Signup / login / logout, session-protected routes | ✅ |
+| Forgot / reset password (single-use hashed tokens, Resend or SMTP, console fallback) | ✅ |
 | Workout, food and measurement logging (add, list, delete) | ✅ |
 | Consistency rank engine (Bronze, Silver, Gold, Diamond) + streak | ✅ |
 | Client dashboard with week grid, recent activity, purchases | ✅ |
@@ -24,7 +25,7 @@ PostgreSQL · NextAuth (credentials) · Paystack**.
 | Gated e-book downloads (file URL never appears in page HTML) | ✅ |
 | Admin console (`/admin`) with revenue, purchases and calls | ✅ |
 | Seed script (admin + demo client, programs, e-books, lessons, call slots) | ✅ |
-| Tests (43 unit tests), ESLint, `tsc --noEmit` | ✅ |
+| Tests (61 unit + flow tests), ESLint, `tsc --noEmit` | ✅ |
 
 Payments are optional: with no Paystack keys the app runs fine and simply tells
 buyers that checkout is not configured yet.
@@ -243,6 +244,35 @@ docs/TESTING.md              manual QA checklist
 docs/DEPLOYMENT.md           Vercel + Paystack go-live guide
 ```
 
+## Password reset
+
+1. `/forgot-password` → `POST /api/auth/forgot-password`. The API always answers
+   "If an account exists…" so it cannot be used to discover which emails are
+   registered.
+2. A 256-bit token is generated; only its **SHA-256 hash** is stored
+   (`PasswordResetToken`), with a 1-hour expiry. Any older unused link for that
+   account is deleted, so only the newest link works.
+3. The email contains `/reset-password/<token>`. That page posts the token plus
+   the new password, which must be 8+ characters with a letter and a number.
+4. On success the token is marked used (single use), all other tokens for the
+   account are removed, the password is re-hashed with bcrypt, and the user is
+   signed in automatically.
+
+Rate limits: 5 reset requests per IP per 15 min, 2-minute cooldown per account,
+10 token submissions per IP per 15 min. These live in memory per instance — fine
+for a small deployment; swap `src/lib/rate-limit.ts` for Upstash/Vercel KV if you
+need limits shared across serverless instances.
+
+Email transport is chosen by env vars (no code change):
+
+| Variables set | Transport |
+| --- | --- |
+| `RESEND_API_KEY` | Resend HTTP API |
+| `SMTP_URL` | SMTP via nodemailer |
+| neither | printed in the server console (great for local testing) |
+
+Set `EMAIL_FROM` to an address your provider has verified.
+
 ## How the rank works
 
 Each day you log at least one workout, meal or measurement counts as an active
@@ -282,7 +312,7 @@ covers every feature (including the no-Paystack-keys path).
 Quick automated checks:
 
 ```bash
-npm test            # 43 unit tests
+npm test            # 61 unit + flow tests
 npm run typecheck
 npm run lint
 npm run build
@@ -323,9 +353,16 @@ Two photographs live in `public/images/`:
 | --- | --- |
 | `hero-gym.jpg` (1376×768) | Landing-page hero background + social share preview (Open Graph/Twitter) |
 | `coaching.jpg` (768×1376, portrait) | "Coaching that knows your name" section on the landing page |
+| `community.jpg` (1600×1067) | "Beginners. Returners. Lifters. Fighters." band on the landing page |
+| `auth-bg.jpg` (1280×1920) | Background for `/login`, `/signup`, `/forgot-password`, `/reset-password/*` |
 
-They are AI-generated for this project, so you own them and there is no stock
-licence to renew. To swap in real photos of your own clients or gym:
+The hero and coaching shots are AI-generated for this project; the community and
+auth photos are Pexels photographs, resized to web weight with EXIF stripped. If
+you keep the Pexels images, credit is not required by the licence but is decent
+practice — and do not reuse images of identifiable people in a way that implies
+they endorse the brand.
+
+To swap in real photos of your own clients or gym:
 
 1. Drop the new file into `public/images/` (keep the same filename, or update the
    `src` in `src/app/(marketing)/page.tsx`).

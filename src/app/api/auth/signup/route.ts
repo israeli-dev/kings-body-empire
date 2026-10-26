@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { badRequest, readJson, serverError } from "@/lib/api";
 import { parseEmail, parseText } from "@/lib/validation";
+import { passwordProblem } from "@/lib/password-reset";
 
 export async function POST(req: Request) {
   const body = await readJson(req);
@@ -15,6 +16,9 @@ export async function POST(req: Request) {
   if (!name) return badRequest("Please enter your name (at least 2 characters).");
   if (!email) return badRequest("That email address does not look valid.");
   if (!password) return badRequest("Password must be at least 8 characters.");
+
+  const weak = passwordProblem(password);
+  if (weak) return badRequest(weak);
 
   try {
     const existing = await prisma.user.findUnique({ where: { email } });

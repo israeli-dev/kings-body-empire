@@ -53,6 +53,15 @@ services:
       - key: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
         sync: false
 
+      # ---- Email (password reset) ----------------------------------------
+      # Leave both blank to log reset emails to the Render console.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SMTP_URL
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
       # ---- Branding / behaviour ------------------------------------------
       - key: NEXT_PUBLIC_TIMEZONE
         value: Africa/Lagos
