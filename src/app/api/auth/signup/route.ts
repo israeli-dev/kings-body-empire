@@ -7,6 +7,7 @@ import { parseEmail, parseText } from "@/lib/validation";
 import { passwordProblem } from "@/lib/password-reset";
 import { attributeReferral, ensureReferralCode } from "@/lib/referrals";
 import { REFERRAL_COOKIE, normaliseReferralCode } from "@/lib/referrals-core";
+import { classifyDatabaseError } from "@/lib/health";
 
 export async function POST(req: Request) {
   const body = await readJson(req);
@@ -23,6 +24,9 @@ export async function POST(req: Request) {
   const weak = passwordProblem(password);
   if (weak) return badRequest(weak);
 
+  // Any database failure below used to surface as "Could not create your
+  // account", which hides whether the email is taken or the deployment is
+  // misconfigured. Classify it and say something actionable.
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -51,7 +55,24 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ...user, referral }, { status: 201 });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const diagnosis = classifyDatabaseError(message);
+
+    if (diagnosis.problem !== "unknown") {
+      // Log the real error for the operator, return a safe explanation.
+      console.error("[signup] database problem:", diagnosis.problem, message);
+      return NextResponse.json(
+        {
+          error:
+            "Accounts cannot be created right now — the server cannot reach its database. Please try again shortly or contact support.",
+          reason: diagnosis.problem,
+        },
+        { status: 503 },
+      );
+    }
+
+    console.error("[signup] failed:", message);
     return serverError("Could not create your account. Please try again.");
   }
 }

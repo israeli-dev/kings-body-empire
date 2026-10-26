@@ -261,6 +261,8 @@ reach the app.
 | `/api/health` → "Supabase project not found" | Project paused or stale URL | Resume it; re-copy the connection string; run `npm run db:check` |
 | `too many connections` under load | Direct connection from many functions | Use the pooler with `?pgbouncer=true&connection_limit=1` |
 | Login appears to work then bounces to `/login` | `NEXTAUTH_URL` ≠ real URL, or secret changed | Set both `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` to the exact public URL and redeploy |
+| **Login and signup both fail, but work locally** | Env vars differ between machines: no `NEXTAUTH_SECRET`, `NEXTAUTH_URL=http://localhost:3000`, wrong `DATABASE_URL` | Run `npm run doctor -- https://<your-domain>` — it names the exact variable and the fix |
+| Signup shows "Accounts cannot be created right now" | Server could not reach its database (paused project, bad URL, migrations missing) | Same command; then `DATABASE_URL="<prod url>" npm run db:deploy` |
 | `UntrustedHost` / redirect loop behind a domain | `NEXTAUTH_URL` still points at the preview URL | Fix the env var, redeploy |
 | Images render unoptimized / warning about `sharp` on Render | `sharp` missing | Already fixed — `sharp` is a dependency now; make sure `npm ci` is used |
 | First request after idle takes 40 s | Render free instance asleep | Expected; upgrade the plan |
@@ -269,3 +271,22 @@ reach the app.
 Need more detail on the database side? `npm run db:check` diagnoses the URL and
 connection, and the README has a troubleshooting table mapped to raw Postgres
 error codes.
+
+### First stop for "it works locally"
+
+```bash
+npm run doctor                            # is this .env deployable at all?
+npm run doctor -- https://<your-domain>   # what is actually wrong out there?
+```
+
+The remote mode reads `/api/health`, which reports `status`, `database`,
+`schema` and an `auth` block listing every dangerous env value **by name**
+(never by value) with the fix for each. Exit code `1` means something is
+blocking sign-in. Wire it into CI if you like:
+
+```bash
+npm run doctor -- "$DEPLOY_URL" || echo "deployment is not ready"
+```
+
+After changing any environment variable on the host, **redeploy** — `NEXTAUTH_SECRET`
+and `NEXTAUTH_URL` are read when the server starts.

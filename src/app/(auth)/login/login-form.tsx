@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { loginErrorMessage } from "@/lib/auth-errors";
 
 export function LoginForm() {
   const router = useRouter();
@@ -12,9 +13,7 @@ export function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(
-    searchParams.get("error") ? "That email or password is not right." : "",
-  );
+  const [error, setError] = useState(loginErrorMessage(searchParams.get("error")));
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -22,21 +21,27 @@ export function LoginForm() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    setLoading(false);
+      setLoading(false);
 
-    if (!result || result.error) {
-      setError("That email or password is not right.");
-      return;
+      if (!result || result.error) {
+        setError(loginErrorMessage(result?.error ?? "Configuration"));
+        return;
+      }
+
+      router.push(callbackUrl);
+      router.refresh();
+    } catch {
+      // Network failure, or the request never reached NextAuth.
+      setLoading(false);
+      setError("Could not reach the server. Check your connection and try again.");
     }
-
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (

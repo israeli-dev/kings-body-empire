@@ -153,6 +153,9 @@ npm run db:seed
 | `npm run db:migrate` | `prisma migrate dev` | **Development only**, after you edit `prisma/schema.prisma`. Creates a shadow database, so the user needs `CREATEDB` (local Docker: yes, Supabase: usually no) |
 | `npm run db:push` | `prisma db push` | Throwaway prototyping — bypasses migration history |
 | `npm run db:reset` | `migrate reset --force` | Local only: drop everything, re-migrate, re-seed |
+| `npm run db:check` | connection + schema diagnosis | The database is unreachable or behaves oddly |
+| `npm run doctor` | auth/env + deploy doctor | **Sign-in works locally but not on the deployed site** — see below |
+| `npm run doctor -- <url>` | fetches `<url>/api/health` | Checking what is really wrong with a deployment |
 
 If anything fails, the seed prints a diagnosis instead of a raw Prisma stack
 trace — the same information `npm run db:check` gives you.
@@ -577,6 +580,45 @@ Two things to know about Supabase URLs:
 - `prisma migrate dev` also creates a *shadow database*; if your provider does
   not allow `CREATE DATABASE`, run `npm run db:push` once, or set
   `shadowDatabaseUrl` in `prisma/schema.prisma`.
+
+## "Login works locally but not on the deployed site"
+
+Local and deployed runs read **different environment variables** — that is almost
+always the whole difference. Two commands tell you which one is wrong:
+
+```bash
+npm run doctor                            # local .env, judged as if deployed
+npm run doctor -- https://your-site.com   # the deployment itself
+```
+
+`npm run doctor -- <url>` prints a verdict for the three things that break
+sign-in, all served by the public `/api/health` endpoint:
+database reachable, schema matching the code, and auth configured for that host.
+Exit code is 1 when something is blocking, so it can gate a deploy.
+
+| What the doctor says | Cause | Fix |
+| --- | --- | --- |
+| `NEXTAUTH_SECRET is missing` | No secret on the host (locally NextAuth tolerates it, in production it refuses) | `openssl rand -base64 32` → add `NEXTAUTH_SECRET` in Vercel/Render → **redeploy** |
+| `NEXTAUTH_SECRET is still the example value` | `.env.example` copy-pasted | Same as above |
+| `NEXTAUTH_URL points at localhost` | Copied `.env` to the host | Set it to the public URL, `https://`, no trailing slash |
+| `NEXTAUTH_URL is X but this request arrived on Y` | Custom domain added without updating env | Match `NEXTAUTH_URL` to the domain users actually visit |
+| `migrations missing on this database` | Production DB was never migrated | `DATABASE_URL="<prod url>" npm run db:deploy` |
+| `database unreachable (paused-project)` | Supabase free project asleep | Resume it in the dashboard |
+| Everything is green but login still fails | The account does not exist **on that database** | Sign up again on the deployed site, or seed it there |
+
+Two behaviours worth knowing:
+
+- **The login page no longer blames your password for server problems.** Only
+  NextAuth's `CredentialsSignin` shows "That email or password is not right.";
+  a missing secret or unreachable database now says so
+  (`src/lib/auth-errors.ts`).
+- **Signup returns 503 with a reason** instead of a generic 500 when the
+  database is unreachable, paused or behind on migrations
+  (`classifyDatabaseError` in `src/lib/health.ts`).
+
+`/api/health` reports `status`, `database`, `schema`, and an `auth` block with
+the issues and fixes — never a secret value. Add `?strict=1` to get a 503 while
+degraded (useful as a real platform health check).
 
 ## Known limitations / next steps
 
