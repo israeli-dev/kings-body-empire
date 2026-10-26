@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { badRequest, readJson, serverError } from "@/lib/api";
 import { parseEmail, parseText } from "@/lib/validation";
 import { passwordProblem } from "@/lib/password-reset";
+import { attributeReferral, ensureReferralCode } from "@/lib/referrals";
+import { REFERRAL_COOKIE, normaliseReferralCode } from "@/lib/referrals-core";
 
 export async function POST(req: Request) {
   const body = await readJson(req);
@@ -32,7 +35,22 @@ export async function POST(req: Request) {
       select: { id: true, email: true, name: true },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    // Referral attribution never fails a signup: an unknown or stale code is
+    // simply ignored, and the new client still gets their own code to share.
+    let referral: { attributed: boolean; referrerName?: string } = { attributed: false };
+    try {
+      const cookieCode = cookies().get(REFERRAL_COOKIE)?.value;
+      const bodyCode = normaliseReferralCode(body.referralCode);
+      referral = await attributeReferral({
+        userId: user.id,
+        rawCode: cookieCode ?? bodyCode,
+      });
+      await ensureReferralCode(user.id);
+    } catch (error) {
+      console.error("[signup] referral attribution failed:", error);
+    }
+
+    return NextResponse.json({ ...user, referral }, { status: 201 });
   } catch {
     return serverError("Could not create your account. Please try again.");
   }

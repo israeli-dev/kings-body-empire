@@ -2,15 +2,28 @@ import { NextResponse } from "next/server";
 import { paystackSecretKey } from "@/lib/env";
 import { markPurchasePaid } from "@/lib/purchases";
 import { verifyPaystackSignature } from "@/lib/paystack-signature";
+import {
+  handleInvoiceEvent,
+  handleSubscriptionEvent,
+  type SubscriptionWebhookData,
+} from "@/lib/subscriptions";
 
 type WebhookBody = {
   event?: string;
-  data?: { reference?: string; status?: string; amount?: number };
+  data?: Record<string, unknown> | null;
 };
 
 /**
- * Paystack webhook — the reliable source of truth for "money actually arrived".
- * Point your Paystack dashboard webhook URL at /api/paystack/webhook.
+ * Paystack webhook — the reliable source of truth for "money actually arrived"
+ * and for subscription state.
+ *
+ * Events handled:
+ *   charge.success                      first charge and renewals
+ *   subscription.create                 link the Paystack plan to a client
+ *   subscription.not_renew/disable/enable
+ *   invoice.create/update/payment_failed
+ *
+ * Point the Paystack dashboard webhook URL at /api/paystack/webhook.
  */
 export async function POST(req: Request) {
   const secret = paystackSecretKey();
@@ -30,11 +43,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const reference = body.data?.reference;
-  if (!reference) return NextResponse.json({ received: true });
+  const event = body.event ?? "";
+  const data = (body.data ?? {}) as Record<string, unknown>;
 
-  if (body.event === "charge.success" && body.data?.status === "success") {
-    await markPurchasePaid(reference, body.data.amount ?? 0);
+  try {
+    if (event === "charge.success" && typeof data.reference === "string") {
+      await markPurchasePaid(data.reference, typeof data.amount === "number" ? data.amount : 0);
+    } else if (event.startsWith("subscription.")) {
+      await handleSubscriptionEvent(event, data as SubscriptionWebhookData);
+    } else if (event.startsWith("invoice.")) {
+      await handleInvoiceEvent(event, data);
+    }
+  } catch (error) {
+    // Log and still answer 200: Paystack retries forever otherwise, and a
+    // retry storm is worse than a single missed event we can replay by hand.
+    console.error(`[paystack] ${event} handler failed:`, error);
   }
 
   // Always 200 so Paystack stops retrying.

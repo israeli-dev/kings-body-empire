@@ -203,6 +203,28 @@ arrives, and watch the platform logs for `[mailer]` errors if it does not.
    expiry, CVV `408`, PIN `0000`, OTP `123456`.
 5. Only switch to live keys after a full test purchase on the production domain.
 
+### Plans and subscriptions
+
+Programs are billed monthly as Paystack **subscriptions**, so the webhook is not
+optional in production — it is how renewals, failed charges and cancellations
+reach the app.
+
+- Plans are created automatically the first time a program is bought
+  (`POST /plan`, amount = `Package.priceKobo`, interval `monthly`). The code is
+  stored on `Package.paystackPlanCode`; editing a price makes the next checkout
+  create a fresh plan, and existing subscribers keep their old amount.
+- Enable these webhook events in the Paystack dashboard (all are handled):
+  `charge.success`, `subscription.create`, `subscription.not_renew`,
+  `subscription.disable`, `subscription.enable`, `invoice.create`,
+  `invoice.update`, `invoice.payment_failed`.
+- Cancel/reactivate go through `POST /subscription/disable|enable` using the
+  stored `email_token`, so a client can manage billing from `/dashboard`.
+- Failed renewals set `PAST_DUE` and keep access for 3 days
+  (`GRACE_DAYS` in `src/lib/subscription-core.ts`) while Paystack retries.
+- Test subscriptions in test mode: Paystack's test dashboard lets you charge a
+  plan immediately, and the **Webhooks → event log** shows every delivery with a
+  "resend" action if you missed one locally.
+
 ---
 
 ## Post-deploy checklist
@@ -216,6 +238,10 @@ arrives, and watch the platform logs for `[mailer]` errors if it does not.
       signed in — then confirm the same link no longer works
 - [ ] Admin account can add a call slot; client can book and cancel it
 - [ ] Paystack test purchase → `/checkout/success` → program shows on dashboard
+- [ ] Monthly program appears under **Your programs** with a next charge date;
+      **Cancel subscription** keeps access until that date
+- [ ] Webhook events `subscription.create` and `invoice.update` show up as
+      delivered in the Paystack event log
 - [ ] `/api/books/<slug>/download` blocked in a private window before buying
 - [ ] Webhook delivers `200` (Paystack dashboard → Webhooks → event log)
 - [ ] Change the seeded admin password; demo client not created

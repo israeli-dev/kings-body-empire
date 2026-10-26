@@ -184,7 +184,7 @@ Seeded accounts (change these before deploying):
 | `NEXT_PUBLIC_SITE_URL` | recommended | Used for absolute links, metadata and Paystack callbacks |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | seed | The admin account `npm run db:seed` creates |
 | `SEED_DEMO_CLIENT` | optional | `false` skips the demo client account |
-| `PAYSTACK_SECRET_KEY` | optional | Turns Paystack checkout on. `sk_test_…` for testing |
+| `PAYSTACK_SECRET_KEY` | optional | Turns Paystack checkout on. `sk_test_…` for testing. Also used to create plans and cancel subscriptions |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | optional | Only needed if you later switch to Paystack Inline JS |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | optional | Shown in the footer |
 | `NEXT_PUBLIC_WHATSAPP_URL` / `NEXT_PUBLIC_INSTAGRAM_URL` | optional | Footer links; leave blank to hide |
@@ -290,19 +290,63 @@ the header and the dashboard card always agree.
 
 ## How payments work
 
-1. Client clicks **Buy** → `POST /api/paystack/initialize` creates a `PENDING`
-   purchase row with a unique `paystackRef` and returns Paystack's
-   `authorization_url`.
+**Programs are monthly subscriptions, e-books are one-off.** Both start the same
+way:
+
+1. Client clicks **Subscribe** → `POST /api/paystack/initialize` creates a
+   `PENDING` `PackagePurchase` (or `BookPurchase`) with a unique `paystackRef`.
+   For a monthly program it first makes sure the program has a Paystack plan
+   (`POST /plan`, stored on `Package.paystackPlanCode`), then initialises the
+   transaction **with the plan code and no amount** — Paystack takes the amount
+   and the monthly renewal from the plan.
 2. Browser goes to Paystack, pays, and is redirected to
    `GET /api/paystack/callback?reference=…`. The server calls Paystack's
-   `/transaction/verify/:reference`, checks the amount, and marks the purchase
-   `PAID`.
+   `/transaction/verify/:reference`, checks the amount, marks the purchase
+   `PAID`, and (for programs) pulls the new subscription from Paystack so
+   checkout still completes before the webhook lands.
 3. `POST /api/paystack/webhook` (signature-verified, idempotent) is the
    reliable backstop if the user closes the tab before the redirect.
 
 Set the webhook URL in the Paystack dashboard to
 `https://<your-domain>/api/paystack/webhook`. Locally, expose the dev server
-with a tunnel (e.g. `ngrok http 3000`) and use that URL.
+with a tunnel (e.g. `ngrok http 3000`) and use that URL — without it the first
+charge still works through the callback, but renewals and cancellations will
+not reach your laptop.
+
+## Subscriptions
+
+| Piece | Where |
+| --- | --- |
+| Status rules (access, grace, labels) | `src/lib/subscription-core.ts` — pure, unit tested |
+| Paystack calls (plan, list, disable, enable) | `src/lib/paystack.ts` |
+| DB + webhook handling | `src/lib/subscriptions.ts` |
+| Webhook entry point | `src/app/api/paystack/webhook/route.ts` |
+| Cancel / reactivate API | `PATCH /api/subscriptions` |
+| Dashboard card | `src/components/subscription-card.tsx` |
+
+Access rule (`hasActiveProgramAccess`): `ACTIVE`, `NON_RENEWING` and `CANCELLED`
+grant access until `currentPeriodEnd`; `PAST_DUE` adds a **3-day grace window**
+(`GRACE_DAYS`) while Paystack retries the card; `COMPLETE` grants nothing.
+Cancelling stops the next charge but never takes back time already paid for.
+
+Events handled (log in Paystack → Webhooks to replay a missed one):
+
+| Event | Effect locally |
+| --- | --- |
+| `charge.success` | marks the matching purchase `PAID` |
+| `subscription.create` | writes `Subscription` (code, email token, next payment date) |
+| `subscription.not_renew` / `.disable` | `NON_RENEWING` / `CANCELLED` — access kept to period end |
+| `subscription.enable` | back to `ACTIVE` |
+| `invoice.create` | opens a `PENDING` `Invoice` |
+| `invoice.update` | `PAID`, extends `currentPeriodEnd` |
+| `invoice.payment_failed` | `PAST_DUE` + 3-day grace |
+
+`Invoice.invoiceCode` is unique, so a replayed webhook cannot extend access twice.
+
+**Changing a program price creates a new Paystack plan** the next time someone
+subscribes; existing subscribers stay on the plan (and price) they signed up to.
+That is deliberate — the admin console shows MRR from active subscriptions, and
+the Subscriptions table shows what each client is actually being charged.
 
 ## Changing program prices
 
@@ -334,6 +378,65 @@ The dashboard's "Programs from …" line is read from the cheapest active packag
 the database, so it never needs editing. Want to sell a program without showing it?
 Set `Package.isActive = false` in Studio — it disappears from `/pricing` and
 checkout, but existing purchases stay valid.
+
+## Progress charts
+
+`/progress` (linked from the dashboard nav) draws weight, weekly training
+volume, daily calories and a consistency heatmap from logs the client already
+keeps. There is no chart library: `src/components/progress-charts.tsx` renders
+inline SVG on the server, so the page needs no client JavaScript and stays light
+on mobile data.
+
+| Piece | Where |
+| --- | --- |
+| Aggregation (pure, unit tested) | `src/lib/progress-core.ts` |
+| Database + payload | `src/lib/progress.ts` |
+| JSON API | `GET /api/progress?range=30\|90` |
+| Page | `src/app/(dashboard)/progress/page.tsx` |
+
+Rules worth knowing:
+
+- Days are grouped in `NEXT_PUBLIC_TIMEZONE` (`Africa/Lagos`), so a 10pm
+  session counts as today.
+- Weight keeps **one point per day** (the last reading wins) so seven weigh-ins
+  on one day do not look like seven days of progress.
+- Training volume is `sets × reps × load`; bodyweight sets count as
+  `sets × reps` so press-ups are not invisible.
+- The calorie average uses logged days only — a day you forgot to log does not
+  pretend you ate nothing.
+- The `activity` array is one cell per day in the range, which is exactly what
+  the heatmap draws.
+
+## Referrals
+
+Every client gets a code (created the first time they open the dashboard) and a
+share link: `https://<site>/?ref=CODE`.
+
+1. The middleware stores the code in a 30-day `kbe_ref` cookie when someone
+   lands with `?ref=…`, so browsing first and signing up tomorrow still counts.
+2. Signup reads the cookie (or a `referralCode` field in the body) and creates a
+   `PENDING` `Referral`. Unknown codes, self-referrals and repeat referees are
+   ignored — `Referral.refereeId` is unique.
+3. The referral **qualifies on the invited client's first paid program**
+   (`markPurchasePaid`, which both the callback and webhook call).
+4. Both sides get **7 days** (`REFERRAL_REWARD_DAYS`): a live subscription has
+   `currentPeriodEnd` pushed out; a referrer with no plan has the days banked in
+   `User.referralBonusDays` and applied to their next subscription automatically
+   (`saveSubscription`).
+5. The referrer gets a "7 free days" email (`src/lib/mailer.ts` →
+   `referralRewardEmail`; console transport when no provider is configured).
+
+| Piece | Where |
+| --- | --- |
+| Code rules, links, stats (pure, unit tested) | `src/lib/referrals-core.ts` |
+| DB, qualification, rewards, overview | `src/lib/referrals.ts` |
+| Capture `?ref=` in a cookie | `src/middleware.ts` |
+| API | `GET /api/referrals` |
+| Dashboard card | `src/components/referral-card.tsx` |
+
+Seeded codes for testing: `COACHKBE` (admin) and `DEMOKBE7` (demo client).
+Attribution is one level deep — no chains, no cash payouts, so nothing to
+reconcile at the end of the month.
 
 ## Testing
 

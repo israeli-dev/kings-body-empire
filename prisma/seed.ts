@@ -134,11 +134,12 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { role: "ADMIN", name: adminName },
+    update: { role: "ADMIN", name: adminName, referralCode: "COACHKBE" },
     create: {
       email: adminEmail,
       name: adminName,
       role: "ADMIN",
+      referralCode: "COACHKBE",
       passwordHash: await bcrypt.hash(adminPassword, 10),
     },
   });
@@ -147,10 +148,11 @@ async function main() {
   if (process.env.SEED_DEMO_CLIENT !== "false") {
     const demo = await prisma.user.upsert({
       where: { email: DEMO_CLIENT.email },
-      update: {},
+      update: { referralCode: "DEMOKBE7" },
       create: {
         name: DEMO_CLIENT.name,
         email: DEMO_CLIENT.email,
+        referralCode: "DEMOKBE7",
         passwordHash: await bcrypt.hash(DEMO_CLIENT.password, 10),
       },
     });
@@ -167,8 +169,9 @@ async function main() {
         priceKobo: pkg.priceKobo,
         contents: pkg.contents,
         isActive: true,
+        billingInterval: "MONTHLY",
       },
-      create: pkg,
+      create: { ...pkg, billingInterval: "MONTHLY" },
     });
   }
   console.log(`✓ ${PACKAGES.length} programs ready`);
@@ -222,6 +225,9 @@ async function main() {
     }
   }
   console.log(`✓ ${slotsCreated} call slots created (of 14 attempted)`);
+
+  console.log("\nReferral codes for testing: COACHKBE (admin), DEMOKBE7 (demo client)");
+  console.log("Try /?ref=DEMOKBE7, then sign up and subscribe as a new client.");
 
   console.log("\nDone. Log in with:");
   console.log(`  admin  → ${adminEmail} / ${adminPassword}`);

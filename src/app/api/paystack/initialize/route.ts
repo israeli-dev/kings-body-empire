@@ -12,6 +12,11 @@ import {
 import { absoluteUrl, paymentsEnabled } from "@/lib/env";
 import { initializePayment } from "@/lib/paystack";
 import { hasPaidBook, hasPaidPackage } from "@/lib/purchases";
+import {
+  ensurePaystackPlan,
+  subscriptionForPackage,
+} from "@/lib/subscriptions";
+import { subscriptionGrantsAccess, type SubscriptionStatusName } from "@/lib/subscription-core";
 import { oneOf, parseText } from "@/lib/validation";
 import type { PurchasableKind } from "@/types";
 
@@ -39,9 +44,36 @@ export async function POST(req: Request) {
       const pkg = await prisma.package.findFirst({ where: { id: itemId, isActive: true } });
       if (!pkg) return badRequest("That program is no longer available.", 404);
 
-      const owned = await hasPaidPackage(user.id, pkg.id);
-      if (owned) {
-        return NextResponse.json({ alreadyOwned: true, redirectUrl: "/dashboard" });
+      const monthly = pkg.billingInterval !== "ONE_OFF";
+
+      if (monthly) {
+        // A live subscription already covers this program.
+        const existing = await subscriptionForPackage(user.id, pkg.id);
+        if (
+          existing &&
+          subscriptionGrantsAccess(
+            {
+              status: existing.status as SubscriptionStatusName,
+              currentPeriodEnd: existing.currentPeriodEnd,
+            },
+          )
+        ) {
+          return NextResponse.json({ alreadyOwned: true, redirectUrl: "/dashboard" });
+        }
+      } else {
+        const owned = await hasPaidPackage(user.id, pkg.id);
+        if (owned) {
+          return NextResponse.json({ alreadyOwned: true, redirectUrl: "/dashboard" });
+        }
+      }
+
+      // The plan has to exist before the transaction, because Paystack takes
+      // the amount (and the monthly renewal) from the plan itself.
+      let planCode: string | undefined;
+      if (monthly) {
+        const plan = await ensurePaystackPlan(pkg);
+        if (!plan.ok) return badRequest(plan.message, 502);
+        planCode = plan.planCode;
       }
 
       const reference = `kbe_pkg_${randomUUID().replace(/-/g, "").slice(0, 20)}`;
@@ -56,10 +88,16 @@ export async function POST(req: Request) {
 
       const result = await initializePayment({
         email: user.email,
-        amountKobo: pkg.priceKobo,
+        ...(planCode ? { plan: planCode } : { amountKobo: pkg.priceKobo }),
         reference,
         callbackUrl: absoluteUrl("/api/paystack/callback"),
-        metadata: { kind: "package", packageId: pkg.id, userId: user.id },
+        metadata: {
+          kind: "package",
+          packageId: pkg.id,
+          userId: user.id,
+          billing: monthly ? "monthly" : "one-off",
+          ...(planCode ? { planCode } : {}),
+        },
       });
 
       if (!result.ok) {

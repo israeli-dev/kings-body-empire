@@ -157,11 +157,12 @@ export default function HomePage() {
               <article key={program.slug} className="card flex flex-col">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{program.title}</h3>
-                  <span className="tag">{program.durationWeeks} weeks</span>
+                  <span className="tag">{program.durationWeeks}-week plan</span>
                 </div>
                 <p className="mt-3 flex-1 text-sm text-muted">{program.description}</p>
                 <p className="mt-6 text-2xl font-semibold text-gold">
                   {formatNaira(program.priceKobo)}
+                  <span className="ml-1 text-sm font-normal text-muted">/month</span>
                 </p>
                 <Link href="/pricing" className="btn-secondary mt-4">
                   View details

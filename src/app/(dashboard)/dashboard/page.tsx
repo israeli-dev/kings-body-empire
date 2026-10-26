@@ -7,6 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { getRankOverview } from "@/lib/rank";
 import { dayKey } from "@/lib/rank-core";
 import { formatNaira } from "@/lib/money";
+import { getUserSubscriptions } from "@/lib/subscriptions";
+import { SubscriptionCard } from "@/components/subscription-card";
+import { ReferralCard } from "@/components/referral-card";
+import { getReferralOverview } from "@/lib/referrals";
 import type { RankName } from "@/types";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -32,6 +36,8 @@ export default async function DashboardPage() {
     recentWorkouts,
     recentFoods,
     cheapestPackage,
+    subscriptions,
+    referralOverview,
   ] = await Promise.all([
     getRankOverview(user.id),
     prisma.workoutLog.findMany({
@@ -77,6 +83,8 @@ export default async function DashboardPage() {
       orderBy: { priceKobo: "asc" },
       select: { priceKobo: true },
     }),
+    getUserSubscriptions(user.id, now),
+    getReferralOverview(user.id),
   ]);
 
   const activeDayKeys = new Set(
@@ -129,6 +137,9 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <RankBadge rank={(user.rank as RankName) ?? overview.rank} />
+          <Link href="/progress" className="btn-secondary btn-sm">
+            Progress
+          </Link>
           {isAdmin && (
             <Link href="/admin" className="btn-secondary btn-sm">Admin</Link>
           )}
@@ -259,8 +270,22 @@ export default async function DashboardPage() {
           </div>
 
           <div className="mt-4 rounded-xl border border-line bg-panel2 p-4">
-            <p className="text-xs uppercase tracking-wider text-muted">Your programs</p>
-            {packagePurchases.length > 0 ? (
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wider text-muted">Your programs</p>
+              {subscriptions.length > 0 && (
+                <Link href="/pricing" className="text-xs text-gold hover:text-goldSoft">
+                  Manage
+                </Link>
+              )}
+            </div>
+
+            {subscriptions.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                {subscriptions.map((subscription) => (
+                  <SubscriptionCard key={subscription.id} subscription={subscription} />
+                ))}
+              </div>
+            ) : packagePurchases.length > 0 ? (
               <ul className="mt-2 space-y-1 text-sm">
                 {packagePurchases.map((purchase) => (
                   <li key={purchase.id}>
@@ -300,13 +325,15 @@ export default async function DashboardPage() {
         </section>
       </div>
 
+      <ReferralCard data={referralOverview} />
+
       {packagePurchases.length === 0 && (
         <section className="card flex flex-wrap items-center justify-between gap-4 border-gold/25">
           <div>
             <h2 className="text-lg font-semibold">Ready for a structured plan?</h2>
             <p className="mt-1 text-sm text-muted">
               {cheapestPackage
-                ? `Programs from ${formatNaira(cheapestPackage.priceKobo)} — training, food templates and check-ins.`
+                ? `Programs from ${formatNaira(cheapestPackage.priceKobo)}/month — training, food templates and check-ins. Cancel any time.`
                 : "Training plans, food templates and weekly check-ins."}
             </p>
           </div>

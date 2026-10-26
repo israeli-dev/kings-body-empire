@@ -83,7 +83,15 @@ export const FAQ = [
   },
   {
     q: "What happens after I pay?",
-    a: "Paystack charges you in naira and we unlock the program or e-book on your account immediately. Your coach reaches out within 24 hours for coaching packages.",
+    a: "Paystack charges you in naira and we unlock the program or e-book on your account immediately. Programs are billed monthly and renew through Paystack until you cancel — your coach reaches out within 24 hours after the first payment.",
+  },
+  {
+    q: "Can I cancel a program?",
+    a: "Yes. Open the dashboard and press Cancel subscription. Billing stops at once and you keep access until the end of the month you already paid for — nothing is taken back.",
+  },
+  {
+    q: "Do referrals really give free days?",
+    a: "Yes. Share your code from the dashboard. When a friend signs up with it and starts a program, you both get 7 extra days, applied automatically.",
   },
   {
     q: "Can I cancel a booked call?",
