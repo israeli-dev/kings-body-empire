@@ -1,94 +1,212 @@
 # Deployment guide
 
-Target setup: **Vercel** (app) + **Supabase or Neon** (PostgreSQL) + **Paystack**
-(payments). Any Node host that runs `next start` works the same way.
+Two supported paths:
 
-## 0. Sanity-check the connection first
+- **[Vercel](#track-a--vercel-recommended)** — best fit for this app (Next.js native,
+  serverless, free tier that does not sleep).
+- **[Render](#track-b--render)** — good if you prefer a long-running Node server,
+  or want everything on one bill. `render.yaml` is committed and ready.
+
+Both use the same database (Supabase / Neon / any Postgres) and the same
+Paystack setup.
+
+---
+
+## Before either track
+
+### 1. Check the production database works
 
 ```bash
-npm run db:check      # redacted DATABASE_URL + live connection test
+DATABASE_URL="postgresql://…production…" npm run db:check
+DATABASE_URL="postgresql://…production…" npm run db:deploy   # create the tables
+DATABASE_URL="postgresql://…production…" npm run db:seed     # admin + catalogue (optional)
 ```
 
-If it reports a problem it tells you exactly which piece of the URL is wrong —
-see the Troubleshooting table in the README.
+- Use the **direct** connection (Supabase: port 5432) for migrations.
+- If Supabase is asleep/paused, resume it in the dashboard first — `db:check`
+  says so explicitly.
+- Seed creates the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Pass them
+  inline for production so the defaults never ship:
 
-## 1. Database
+  ```bash
+  DATABASE_URL="…" ADMIN_EMAIL="you@yourdomain.com" ADMIN_PASSWORD="<strong>" \
+  SEED_DEMO_CLIENT="false" npm run db:seed
+  ```
 
-1. Create a Supabase or Neon project and copy the **direct** connection string
-   (port `5432`).
-2. From your machine, with that URL in `DATABASE_URL`:
+### 2. Generate a production auth secret
 
-   ```bash
-   npm run db:deploy   # applies prisma/migrations to production (no shadow DB needed)
-   npm run db:seed     # optional: admin account + starter catalogue
-   ```
-
-   `db:deploy` is the right command on Supabase/Neon — `db:migrate` is for local
-   schema development only, because it wants to create a shadow database.
-
-   Use a direct/session connection for this step — a transaction pooler
-   (PgBouncer on port 6543) will refuse the advisory locks migrations need.
-3. If the provider blocks creating databases, `npm run db:push` is an acceptable
-   shortcut for the first deploy (it syncs the schema without the shadow DB).
-
-4. Change the seeded admin password immediately:
-   `ADMIN_PASSWORD="…" npm run db:seed` updates the existing admin's role and
-   name; to rotate the password open Prisma Studio (`npm run db:studio`) or
-   update `passwordHash` with a bcrypt hash.
-
-## 2. Environment variables on Vercel
-
-Project → Settings → Environment Variables (Production **and** Preview):
-
-```
-DATABASE_URL=postgresql://…          # add ?pgbouncer=true&connection_limit=1 when using a pooler
-NEXTAUTH_SECRET=<openssl rand -base64 32>
-NEXTAUTH_URL=https://your-domain.com
-NEXT_PUBLIC_SITE_URL=https://your-domain.com
-PAYSTACK_SECRET_KEY=sk_live_…
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_live_…
-NEXT_PUBLIC_SUPPORT_EMAIL=hello@your-domain.com
-NEXT_PUBLIC_TIMEZONE=Africa/Lagos
+```bash
+openssl rand -base64 32
 ```
 
-`ADMIN_*` and `SEED_DEMO_CLIENT` are only needed when you run the seed locally.
+Use this value for `NEXTAUTH_SECRET` everywhere. Changing it later signs
+everyone out.
 
-## 3. Deploy
+### 3. Merge your work into `main`
 
-- Import the GitHub repo in Vercel → framework auto-detects Next.js.
-- Build command: `npm run build` (runs `prisma generate` first).
-- Output: default (`.next`).
-- `postinstall` already generates the Prisma client; `prisma/schema.prisma`
-  includes Vercel's `rhel-openssl-3.0.x` binary target so the query engine
-  ships with the serverless functions.
+Both platforms deploy from a branch. If your changes only exist on a feature
+branch, merge the PR to `main` first (or point the platform at that branch).
 
-## 4. Paystack
+---
 
-1. Dashboard → Settings → API Keys & Webhooks.
-2. Webhook URL: `https://your-domain.com/api/paystack/webhook`
-   (the handler verifies the `x-paystack-signature` HMAC-SHA512 header).
-3. Leave the callback URL alone — the app sends
-   `callback_url=/api/paystack/callback` per transaction.
-4. Test with `sk_test_…` keys first; Paystack test card:
-   `4084 0840 8408 4081`, any future expiry, CVV `408`, PIN `0000`, OTP `123456`.
-5. Switch to live keys only after a full test purchase on the production domain.
+## Track A — Vercel (recommended)
 
-## 5. Post-deploy checklist
+### A1. Import the project
 
-- [ ] Sign up, log a workout, confirm the rank badge appears.
-- [ ] Book a call (create a slot as admin first) and cancel it.
-- [ ] Test purchase → success page → program shows on dashboard → `/admin`
-      shows the purchase as PAID.
-- [ ] E-book download works for the buyer and is blocked in a private window.
-- [ ] Webhook shows `200` in the Paystack dashboard's event log.
-- [ ] Emails/WhatsApp/Instagram links in the footer point at real accounts.
-- [ ] Replace the placeholder testimonials in `src/lib/content.ts` and the
-      seed e-book `fileUrl`s with your real assets.
+1. <https://vercel.com/new> → **Import Git Repository** → pick
+   `israeli-dev/kings-body-empire`.
+2. Framework preset: **Next.js** (auto-detected — leave build/output settings alone).
+3. Don't deploy yet; add the env vars first.
 
-## Notes
+### A2. Environment variables
 
-- Keep `NEXTAUTH_SECRET` stable: rotating it signs everyone out.
-- Prisma migrations are committed; run `npm run db:deploy` on every release that
-  touches `prisma/schema.prisma`.
-- Vercel's serverless functions are stateless — the app already creates one
-  Prisma client per instance (`src/lib/prisma.ts`).
+Project → **Settings → Environment Variables**. Add each for **Production**
+(and Preview if you want PR previews to work):
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | Supabase **pooler** URL with `?pgbouncer=true&connection_limit=1` (runtime) |
+| `NEXTAUTH_SECRET` | the `openssl rand -base64 32` value |
+| `NEXTAUTH_URL` | `https://<your-domain>` (Vercel domain or custom domain) |
+| `NEXT_PUBLIC_SITE_URL` | same as `NEXTAUTH_URL` |
+| `PAYSTACK_SECRET_KEY` | `sk_live_…` (or `sk_test_…` to trial it) |
+| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | `pk_live_…` |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | your real support email |
+| `NEXT_PUBLIC_TIMEZONE` | `Africa/Lagos` |
+| `NEXT_PUBLIC_WHATSAPP_URL` | `https://wa.me/234…` (optional) |
+| `NEXT_PUBLIC_INSTAGRAM_URL` | your profile URL (optional) |
+
+> **Why the pooler?** Vercel runs many short-lived functions. The session
+> pooler (port 5432 on `…pooler.supabase.com`) or the transaction pooler
+> (6543 + `pgbouncer=true`) keeps you inside Supabase's connection limit.
+> Migrations still need the direct URL — run them from your machine (step 1).
+
+### A3. Deploy
+
+**Deploy** → wait ~2 minutes. The build runs `npm run build`
+(`prisma generate && next build`); `next.config.mjs` already includes Vercel's
+`rhel-openssl-3.0.x` Prisma binary target, so no extra config is needed.
+
+Then check:
+
+```bash
+curl https://<your-domain>/api/health          # {"status":"ok","database":"up",…}
+```
+
+### A4. Custom domain (optional)
+
+Settings → Domains → add it, follow the DNS instructions, then **update
+`NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` to the custom domain and redeploy**.
+Leaving them on the `*.vercel.app` URL causes login redirect loops.
+
+### A5. CLI alternative
+
+```bash
+npm i -g vercel
+vercel link
+vercel env add NEXTAUTH_SECRET production   # repeat per variable, or use the dashboard
+vercel --prod
+```
+
+---
+
+## Track B — Render
+
+`render.yaml` is committed, so the Blueprint flow is a few clicks.
+
+### B1. Blueprint (fastest)
+
+1. <https://dashboard.render.com/blueprints> → **New Blueprint Instance** →
+   connect the repo → it reads `render.yaml`.
+2. Render prompts for the `sync: false` values. Have ready:
+   `DATABASE_URL`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`,
+   `PAYSTACK_SECRET_KEY`, `NEXT_PUBLIC_SUPPORT_EMAIL`.
+   Set `NEXTAUTH_URL` to `https://<service-name>.onrender.com` — exact name is
+   shown after creation; you can edit and redeploy.
+   `NEXTAUTH_SECRET` is generated automatically.
+3. **Apply** → first build (~3–5 min) → the service goes live.
+4. Verify: `curl https://<service>.onrender.com/api/health`
+
+### B2. Manual web service (no Blueprint)
+
+1. **New → Web Service** → connect the repo.
+2. Runtime **Node**, branch **main**, region **Frankfurt** (closest to Lagos).
+3. Build command: `npm ci && npm run build`
+4. Start command: `npm run start` (this honours Render's `$PORT`)
+5. Health check path: `/api/health`
+6. Add the same env vars as the Vercel table, plus
+   `NODE_VERSION=20` and `SEED_DEMO_CLIENT=false`.
+7. Create → wait for the live badge.
+
+### B3. Migrations on Render
+
+Run them from your machine against the production database (step 1) — safest and
+works on every plan:
+
+```bash
+DATABASE_URL="…production…" npm run db:deploy
+```
+
+Alternatively add a **Pre-Deploy Command** of `npm run db:deploy` in the service
+settings (paid instances) so every deploy migrates before the new instance
+starts. Never run `prisma migrate dev` in production.
+
+### Render notes
+
+- **Free instances sleep** after 15 minutes idle; the next request takes
+  ~30–50 s to wake. Upgrade to Starter for an always-on site.
+- Render needs `NEXTAUTH_URL` to match the public URL exactly (trailing slash
+  matters — no trailing slash).
+- Push to `main` auto-deploys; zero-downtime rolling deploys keep the old
+  instance serving until `/api/health` passes.
+
+---
+
+## Paystack (both platforms)
+
+1. Paystack Dashboard → **Settings → API Keys & Webhooks**.
+2. **Webhook URL:** `https://<your-domain>/api/paystack/webhook`
+   (the handler verifies the `x-paystack-signature` HMAC — no extra config).
+3. Callback URL: leave blank; the app sends `callback_url` per transaction.
+4. Test with `sk_test_…` first — test card `4084 0840 8408 4081`, any future
+   expiry, CVV `408`, PIN `0000`, OTP `123456`.
+5. Only switch to live keys after a full test purchase on the production domain.
+
+---
+
+## Post-deploy checklist
+
+- [ ] `GET /api/health` → `{"status":"ok","database":"up"}`
+- [ ] `/` shows the hero photo, coach section, programs and e-book cards
+      (empty cards = seed never ran)
+- [ ] Sign up → log a workout → rank badge appears
+- [ ] Log out → `/dashboard` redirects to `/login` and back after logging in
+- [ ] Admin account can add a call slot; client can book and cancel it
+- [ ] Paystack test purchase → `/checkout/success` → program shows on dashboard
+- [ ] `/api/books/<slug>/download` blocked in a private window before buying
+- [ ] Webhook delivers `200` (Paystack dashboard → Webhooks → event log)
+- [ ] Change the seeded admin password; demo client not created
+      (`SEED_DEMO_CLIENT=false`)
+- [ ] Replace placeholder testimonials (`src/lib/content.ts`) and e-book
+      `fileUrl`s with real assets
+
+---
+
+## Troubleshooting deploys
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Build fails: `PrismaClientInitializationError` / `@prisma/client did not initialize` | `prisma generate` did not run | Build command must be `npm run build` (it runs generate); keep `postinstall` in place |
+| Build fails: `Environment variable not found: DATABASE_URL` | Missing at build time | Add `DATABASE_URL` to the platform's env vars |
+| `/api/health` → `database: "down"`, "tables are missing" | Migrations never ran | `npm run db:deploy` against production |
+| `/api/health` → "Supabase project not found" | Project paused or stale URL | Resume it; re-copy the connection string; run `npm run db:check` |
+| `too many connections` under load | Direct connection from many functions | Use the pooler with `?pgbouncer=true&connection_limit=1` |
+| Login appears to work then bounces to `/login` | `NEXTAUTH_URL` ≠ real URL, or secret changed | Set both `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` to the exact public URL and redeploy |
+| `UntrustedHost` / redirect loop behind a domain | `NEXTAUTH_URL` still points at the preview URL | Fix the env var, redeploy |
+| Images render unoptimized / warning about `sharp` on Render | `sharp` missing | Already fixed — `sharp` is a dependency now; make sure `npm ci` is used |
+| First request after idle takes 40 s | Render free instance asleep | Expected; upgrade the plan |
+| Payment returns to `/checkout/failure?reason=verify` | Amount mismatch or wrong keys | Check `PAYSTACK_SECRET_KEY` matches the mode (test vs live) |
+
+Need more detail on the database side? `npm run db:check` diagnoses the URL and
+connection, and the README has a troubleshooting table mapped to raw Postgres
+error codes.

@@ -226,6 +226,7 @@ src/
     (dashboard)/             signed-in app: /dashboard, /workouts, /food,
                              /measurements, /education, /book-call, /admin
     api/                     route handlers (auth, logs, rank, calls, paystack…)
+      health/                GET /api/health — deploy/database health check
   components/                shared UI (site header/footer, dashboard nav, buy button…)
   lib/
     auth.ts                  NextAuth options (JWT sessions, role + rank in token)
@@ -289,9 +290,30 @@ npm run build
 
 ## Deploying
 
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (Vercel + Supabase/Neon +
-Paystack). Short version: set the env vars, run `npm run db:deploy` against the
-production database, deploy.
+Full walkthrough (both platforms, env vars, migrations, Paystack webhook,
+troubleshooting): **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+Short version — either works:
+
+**Vercel**
+
+1. Run the migrations against production from your machine:
+   `DATABASE_URL="<prod url>" npm run db:deploy` (then `db:seed` if you want the catalogue).
+2. Import the repo at <https://vercel.com/new> (framework auto-detects).
+3. Add env vars: `DATABASE_URL` (pooler + `?pgbouncer=true&connection_limit=1`),
+   `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`, Paystack keys.
+4. Deploy, then open `/api/health` — expect `{"status":"ok","database":"up"}`.
+
+**Render**
+
+1. Same migration step against production.
+2. <https://dashboard.render.com/blueprints> → New Blueprint → pick this repo;
+   `render.yaml` creates the service. Fill in the prompted env vars
+   (set `NEXTAUTH_URL` to `https://<service>.onrender.com`).
+3. Health check path is already `/api/health`; free instances sleep when idle.
+
+Set the Paystack webhook to `https://<your-domain>/api/paystack/webhook` on both.
+`npm start` honours `$PORT`, so Render/Heroku-style hosts work out of the box.
 
 ## Images and branding
 
