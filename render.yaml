@@ -43,7 +43,11 @@ services:
       - key: NEXTAUTH_SECRET
         generateValue: true # Render generates a strong secret for you
       - key: NEXTAUTH_URL
-        sync: false # must equal the deployed URL, e.g. https://kings-body-empire.onrender.com
+        # Must equal the deployed URL exactly, with no trailing slash:
+        #   https://kings-body-empire.onrender.com
+        # Leave it blank and the app falls back to RENDER_EXTERNAL_URL (Render
+        # sets that automatically), but setting it explicitly is safer.
+        sync: false
       - key: NEXT_PUBLIC_SITE_URL
         sync: false # same value as NEXTAUTH_URL
 

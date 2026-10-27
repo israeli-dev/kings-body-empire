@@ -1,9 +1,12 @@
 /** Environment access in one place, with sane fallbacks for local dev. */
+import { resolveSiteUrl } from "./site-url";
 
-export const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  process.env.NEXTAUTH_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
+/**
+ * The public URL of this deployment. Falls back to the platform's own variable
+ * (Render/VERCEL) before giving up on localhost, so callback links and
+ * redirects are right even when NEXTAUTH_URL was forgotten.
+ */
+export const siteUrl = resolveSiteUrl(process.env);
 
 export const supportEmail =
   process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "hello@kingsbodyempire.com";

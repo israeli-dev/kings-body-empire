@@ -67,7 +67,7 @@ Project → **Settings → Environment Variables**. Add each for **Production**
 | --- | --- |
 | `DATABASE_URL` | Supabase **pooler** URL with `?pgbouncer=true&connection_limit=1` (runtime) |
 | `NEXTAUTH_SECRET` | the `openssl rand -base64 32` value |
-| `NEXTAUTH_URL` | `https://<your-domain>` (Vercel domain or custom domain) |
+| `NEXTAUTH_URL` | `https://<your-domain>` — scheme included, **no trailing slash, no path** (`https://kings-body-empire.onrender.com`). If blank on Render/Vercel the app falls back to `RENDER_EXTERNAL_URL` / `VERCEL_URL` |
 | `NEXT_PUBLIC_SITE_URL` | same as `NEXTAUTH_URL` |
 | `PAYSTACK_SECRET_KEY` | `sk_live_…` (or `sk_test_…` to trial it) |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | `pk_live_…` |
