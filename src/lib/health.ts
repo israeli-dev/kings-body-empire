@@ -208,51 +208,111 @@ export type DatabaseProblem =
   | "paused-project"
   | "unreachable"
   | "credentials"
+  | "missing-database"
   | "missing-tables"
   | "missing-columns"
+  | "pool-exhausted"
+  | "pgbouncer-prepared-statements"
+  | "invalid-url"
   | "unknown";
+
+/**
+ * Prisma hides the interesting part in prose, not in the message text.
+ * Pull out the Prisma error code (`P1001`) or Postgres SQLSTATE (`28P01`,
+ * `3D000`) when one is present so a deployment can be diagnosed from the
+ * response alone. Codes reveal nothing about credentials or hosts.
+ */
+export function extractDiagnosticCode(message: string): string | null {
+  const prisma = /\b(P\d{4})\b/.exec(message);
+  if (prisma) return prisma[1];
+  const sqlstate = /\b([0-9A-Z]{5})\b\s*$/.exec(message.trim());
+  if (sqlstate && /^[0-9A-Z]{5}$/.test(sqlstate[1]) && /[A-Z]/.test(sqlstate[1])) {
+    return sqlstate[1];
+  }
+  return null;
+}
 
 /** Turns a Prisma/Postgres error message into a category plus a next step. */
 export function classifyDatabaseError(message: string): {
   problem: DatabaseProblem;
   hint: string;
+  code: string | null;
 } {
   const text = message || "";
+  const code = extractDiagnosticCode(text);
+
+  const result = (problem: DatabaseProblem, hint: string) => ({ problem, hint, code });
 
   if (/tenant\/user .*not found|project .*not found/i.test(text)) {
-    return {
-      problem: "paused-project",
-      hint: "The Supabase project looks paused or the connection string is stale. Open the Supabase dashboard, resume the project, then copy the connection string again.",
-    };
+    return result(
+      "paused-project",
+      "The Supabase project looks paused or the connection string is stale. Open the Supabase dashboard, resume the project, then copy the connection string again.",
+    );
   }
-  if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|P1001|P1008|connection.*(closed|timeout)/i.test(text)) {
-    return {
-      problem: "unreachable",
-      hint: "Database unreachable — check DATABASE_URL, the region in the host name, and that the database is running.",
-    };
+
+  // Prisma's real wording — "Can't reach database server at `host:5432`" — never
+  // contains "P1001", which is why older builds showed a useless generic error.
+  if (
+    /can'?t reach database server|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|P1001|P1008|P1017/i.test(
+      text,
+    )
+  ) {
+    return result(
+      "unreachable",
+      "The app cannot open a connection: check DATABASE_URL on the host (quotes around the value are a common mistake), that the Supabase project is running, and that you used the pooler host — the direct db.<ref>.supabase.co host is IPv6-only for new projects and unreachable from most hosts.",
+    );
   }
-  if (/P1000|authentication failed|password authentication failed/i.test(text)) {
-    return {
-      problem: "credentials",
-      hint: "The database rejected the credentials in DATABASE_URL. Reset the database password in Supabase and update the env var.",
-    };
+
+  if (/prepared statement .*already exists/i.test(text)) {
+    return result(
+      "pgbouncer-prepared-statements",
+      "Connected through the transaction pooler without the right options. Append ?pgbouncer=true&connection_limit=1 to DATABASE_URL, or use the session pooler on port 5432.",
+    );
   }
+
+  if (/too many connections|timed out fetching a new connection|P2024|remaining connection slots/i.test(text)) {
+    return result(
+      "pool-exhausted",
+      "The database ran out of connections. Use the pooler with ?connection_limit=1 (and PgBouncer) instead of a direct connection from every server instance.",
+    );
+  }
+
+  if (/P1000|authentication failed|28P01|SCRAM|SASL/i.test(text)) {
+    return result(
+      "credentials",
+      "The database rejected the credentials in DATABASE_URL. Reset the database password in Supabase and update the env var, encoding special characters (@ # / :) as %40 %23 %2F %3A.",
+    );
+  }
+
+  if (/3D000|database .* does not exist/i.test(text)) {
+    return result(
+      "missing-database",
+      "DATABASE_URL points at a database that does not exist. Supabase uses `postgres`; delete the path after the host and try again.",
+    );
+  }
+
   if (/P2021|relation .* does not exist|table .* does not exist/i.test(text)) {
-    return {
-      problem: "missing-tables",
-      hint: "The database is reachable but empty — run `npm run db:deploy` (or `db:setup`) against this database.",
-    };
+    return result(
+      "missing-tables",
+      "The database is reachable but empty — run `npm run db:deploy` (or `db:setup`) against this database.",
+    );
   }
+
   if (/P2022|column .* does not exist/i.test(text)) {
-    return {
-      problem: "missing-columns",
-      hint: "The database is behind the code — a migration is missing. Run `npm run db:deploy` against this database, then restart the app.",
-    };
+    return result(
+      "missing-columns",
+      "The database is behind the code — a migration is missing. Run `npm run db:deploy` against this database, then restart the app.",
+    );
   }
-  return {
-    problem: "unknown",
-    hint: "Check the server logs for the full Prisma error.",
-  };
+
+  if (/environment variable not found|invalid value for argument .url|invalid url|must start with the protocol/i.test(text)) {
+    return result(
+      "invalid-url",
+      "DATABASE_URL is missing or malformed on this host. Paste the full `postgresql://…` connection string (no surrounding quotes, no angle brackets).",
+    );
+  }
+
+  return result("unknown", "Check the server logs for the full Prisma error.");
 }
 
 /** One word for the top of a health response. */

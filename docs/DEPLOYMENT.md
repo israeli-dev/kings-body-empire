@@ -272,6 +272,45 @@ Need more detail on the database side? `npm run db:check` diagnoses the URL and
 connection, and the README has a troubleshooting table mapped to raw Postgres
 error codes.
 
+### Render + Supabase: the checklist that actually matters
+
+Deployed on Render and talking to Supabase, sign-in failing while localhost is
+fine is almost always one of these five. Check them in this order.
+
+1. **`DATABASE_URL` on Render is a different string from your local one.** The
+   most common cause. Copy the exact value you use locally (it is known good)
+   into Render → Environment, then **redeploy** — Render restarts on save, but a
+   build-time cache can keep the old value until the next deploy.
+2. **Quotes around the value.** Pasting `DATABASE_URL="postgresql://…"` into the
+   Render field stores the quotes as part of the string and the connection fails
+   with a generic error. The value must start with `postgresql://` and contain
+   no surrounding quotes.
+3. **The direct host.** `db.<ref>.supabase.co` is IPv6-only for newer Supabase
+   projects and is unreachable from Render. Use the **pooler** host, e.g.
+   `aws-1-eu-west-1.pooler.supabase.com`. For serverless/many instances append
+   `?pgbouncer=true&connection_limit=1` (the transaction pooler on port 6543),
+   or use the session pooler on 5432 without those options.
+4. **Project paused.** Free Supabase projects pause after a week idle. `npm run
+   db:check` locally reports `tenant/user … not found`; resume it in the
+   dashboard.
+5. **Migrations never ran against the production database.** Your local
+   `db:check` can be green while the deployed database is empty or behind.
+   `DATABASE_URL="<render url>" npm run db:deploy`.
+
+Fastest way to see the real error:
+
+```bash
+# Reproduce the deployment's connection from your machine
+DATABASE_URL="<the value from Render → Environment>" npm run db:check
+
+# Or read it off the running service
+npm run doctor -- https://<service>.onrender.com
+```
+
+The deployed `/api/health` reports `database`, `databaseError`,
+`databaseErrorCode` and `databaseHint`; the raw Prisma message goes to the
+Render log (`[health] database …`), where you can copy it into a search.
+
 ### First stop for "it works locally"
 
 ```bash

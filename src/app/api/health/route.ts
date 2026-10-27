@@ -29,6 +29,7 @@ export async function GET(req: Request) {
   // ---- 1. Database reachable -------------------------------------------------
   let database: "up" | "down" = "down";
   let databaseError: string | null = null;
+  let databaseErrorCode: string | null = null;
   let databaseHint: string | null = null;
 
   try {
@@ -38,7 +39,10 @@ export async function GET(req: Request) {
     const message = error instanceof Error ? error.message : String(error);
     const diagnosis = classifyDatabaseError(message);
     databaseError = diagnosis.problem;
+    databaseErrorCode = diagnosis.code;
     databaseHint = diagnosis.hint;
+    // Full detail belongs in the platform log, not a public response.
+    console.error(`[health] database ${diagnosis.problem} (${diagnosis.code ?? "no code"}):`, message);
   }
 
   // ---- 2. Schema matches the code -------------------------------------------
@@ -54,8 +58,9 @@ export async function GET(req: Request) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const diagnosis = classifyDatabaseError(message);
-      schema = diagnosis.problem === "unknown" ? "missing" : "missing";
+      schema = "missing";
       schemaHint = diagnosis.hint;
+      console.error("[health] schema check failed:", message);
     }
   }
 
@@ -84,6 +89,7 @@ export async function GET(req: Request) {
     service: "kings-body-empire",
     database,
     databaseError,
+    databaseErrorCode,
     databaseHint,
     schema,
     schemaHint,

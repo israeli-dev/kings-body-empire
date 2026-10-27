@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyDatabaseError,
   evaluateAuthConfig,
+  extractDiagnosticCode,
   isLocalHostname,
   normaliseUrl,
   overallStatus,
@@ -192,8 +193,53 @@ describe("classifyDatabaseError", () => {
     expect(columns.hint).toContain("migration");
   });
 
+  it("recognises Prisma's real unreachable wording (the deployed bug)", () => {
+    // This is what Prisma actually prints; it contains no "P1001" token, which
+    // is why the deployed build reported the useless "Database query failed."
+    const diagnosis = classifyDatabaseError(
+      "Can't reach database server at `aws-1-eu-west-1.pooler.supabase.com:6543`",
+    );
+    expect(diagnosis.problem).toBe("unreachable");
+    expect(diagnosis.hint).toContain("pooler");
+  });
+
+  it("recognises pool exhaustion and pgbouncer statement clashes", () => {
+    expect(
+      classifyDatabaseError(
+        "Timed out fetching a new connection from the connection pool. (P2024)",
+      ).problem,
+    ).toBe("pool-exhausted");
+    expect(
+      classifyDatabaseError('prepared statement "s0" already exists').problem,
+    ).toBe("pgbouncer-prepared-statements");
+    expect(classifyDatabaseError("FATAL: too many connections").problem).toBe("pool-exhausted");
+  });
+
+  it("recognises a missing or malformed DATABASE_URL", () => {
+    expect(
+      classifyDatabaseError("error: Environment variable not found: DATABASE_URL.").problem,
+    ).toBe("invalid-url");
+    expect(classifyDatabaseError("3D000: database \"nope\" does not exist").problem).toBe(
+      "missing-database",
+    );
+  });
+
+  it("drops the diagnostics when the URL password is rejected", () => {
+    expect(classifyDatabaseError("P1000: Authentication failed against database").problem).toBe(
+      "credentials",
+    );
+  });
+
   it("falls back to unknown", () => {
-    expect(classifyDatabaseError("something odd happened").problem).toBe("unknown");
+    const diagnosis = classifyDatabaseError("something odd happened");
+    expect(diagnosis.problem).toBe("unknown");
+    expect(diagnosis.code).toBeNull();
+  });
+
+  it("extracts the Prisma code or SQLSTATE for the response", () => {
+    expect(extractDiagnosticCode("Timed out fetching a new connection (P2024)")).toBe("P2024");
+    expect(extractDiagnosticCode("FATAL: password authentication failed 28P01")).toBe("28P01");
+    expect(extractDiagnosticCode("no code here at all")).toBeNull();
   });
 });
 

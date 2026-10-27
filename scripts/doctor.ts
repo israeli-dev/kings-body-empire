@@ -36,6 +36,7 @@ type HealthPayload = {
   status?: string;
   database?: string;
   databaseError?: string | null;
+  databaseErrorCode?: string | null;
   databaseHint?: string | null;
   schema?: string;
   schemaHint?: string | null;
@@ -218,7 +219,8 @@ async function checkRemote(rawUrl: string) {
     ok("reachable");
   } else {
     failures += 1;
-    bad(`unreachable (${payload.databaseError ?? "unknown"})`);
+    const code = payload.databaseErrorCode ? ` · ${payload.databaseErrorCode}` : "";
+    bad(`unreachable (${payload.databaseError ?? "unknown"}${code})`);
     if (payload.databaseHint) console.log(`      ${C.dim}→ ${payload.databaseHint}${C.reset}`);
   }
 
