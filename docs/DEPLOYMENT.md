@@ -261,6 +261,8 @@ reach the app.
 | `/api/health` → "Supabase project not found" | Project paused or stale URL | Resume it; re-copy the connection string; run `npm run db:check` |
 | `too many connections` under load | Direct connection from many functions | Use the pooler with `?pgbouncer=true&connection_limit=1` |
 | Login appears to work then bounces to `/login` | `NEXTAUTH_URL` ≠ real URL, or secret changed | Set both `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` to the exact public URL and redeploy |
+| **Login and signup both fail, but work locally** | Env vars differ between machines: no `NEXTAUTH_SECRET`, `NEXTAUTH_URL=http://localhost:3000`, wrong `DATABASE_URL` | Run `npm run doctor -- https://<your-domain>` — it names the exact variable and the fix |
+| Signup shows "Accounts cannot be created right now" | Server could not reach its database (paused project, bad URL, migrations missing) | Same command; then `DATABASE_URL="<prod url>" npm run db:deploy` |
 | `UntrustedHost` / redirect loop behind a domain | `NEXTAUTH_URL` still points at the preview URL | Fix the env var, redeploy |
 | Images render unoptimized / warning about `sharp` on Render | `sharp` missing | Already fixed — `sharp` is a dependency now; make sure `npm ci` is used |
 | First request after idle takes 40 s | Render free instance asleep | Expected; upgrade the plan |
@@ -269,3 +271,72 @@ reach the app.
 Need more detail on the database side? `npm run db:check` diagnoses the URL and
 connection, and the README has a troubleshooting table mapped to raw Postgres
 error codes.
+
+### Render + Supabase: the checklist that actually matters
+
+Deployed on Render and talking to Supabase, sign-in failing while localhost is
+fine is almost always one of these five. Check them in this order.
+
+1. **`DATABASE_URL` on Render is a different string from your local one.** The
+   most common cause. Copy the exact value you use locally (it is known good)
+   into Render → Environment, then **redeploy** — Render restarts on save, but a
+   build-time cache can keep the old value until the next deploy.
+2. **Quotes around the value.** Pasting `DATABASE_URL="postgresql://…"` into the
+   Render field stores the quotes as part of the string and the connection fails
+   with a generic error. The value must start with `postgresql://` and contain
+   no surrounding quotes.
+3. **The direct host.** `db.<ref>.supabase.co` is IPv6-only for newer Supabase
+   projects and is unreachable from Render. Use the **pooler** host, e.g.
+   `aws-1-eu-west-1.pooler.supabase.com`. For serverless/many instances append
+   `?pgbouncer=true&connection_limit=1` (the transaction pooler on port 6543),
+   or use the session pooler on 5432 without those options.
+4. **Project paused.** Free Supabase projects pause after a week idle. `npm run
+   db:check` locally reports `tenant/user … not found`; resume it in the
+   dashboard.
+5. **Migrations never ran against the production database.** Your local
+   `db:check` can be green while the deployed database is empty or behind.
+   `DATABASE_URL="<render url>" npm run db:deploy`.
+
+Fastest way to see the real error:
+
+```bash
+# Reproduce the deployment's connection from your machine
+DATABASE_URL="<the value from Render → Environment>" npm run db:check
+
+# Or read it off the running service
+npm run doctor -- https://<service>.onrender.com
+```
+
+The deployed `/api/health` reports `database`, `databaseError`,
+`databaseErrorCode`, `databaseHint` and `databaseTarget` — the last one naming
+only the **connection style and port** (`supabase-session-pooler` on `5432`,
+`supabase-direct`, `local`, `invalid`…), never the host or password. If the
+deployment says `supabase-direct` while your machine uses the pooler, that is
+your bug. The raw Prisma message goes to the Render log (`[health] database …`).
+
+```bash
+npm run doctor -- https://<service>.onrender.com
+#   connection: supabase-direct on port 5432
+#   ✗ DATABASE_URL uses the direct Supabase host … unreachable from most hosts
+#   ! this machine connects as supabase-session-pooler (:5432) but the
+#     deployment connects as supabase-direct — copy the value that works locally
+```
+
+### First stop for "it works locally"
+
+```bash
+npm run doctor                            # is this .env deployable at all?
+npm run doctor -- https://<your-domain>   # what is actually wrong out there?
+```
+
+The remote mode reads `/api/health`, which reports `status`, `database`,
+`schema` and an `auth` block listing every dangerous env value **by name**
+(never by value) with the fix for each. Exit code `1` means something is
+blocking sign-in. Wire it into CI if you like:
+
+```bash
+npm run doctor -- "$DEPLOY_URL" || echo "deployment is not ready"
+```
+
+After changing any environment variable on the host, **redeploy** — `NEXTAUTH_SECRET`
+and `NEXTAUTH_URL` are read when the server starts.

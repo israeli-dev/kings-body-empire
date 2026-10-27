@@ -199,6 +199,25 @@ With keys (`sk_test_…`):
 - [ ] Duplicate webhook deliveries for the same reference do not create a
       second purchase or double-unlock (idempotent).
 
+## 7b. Deploy doctor and health
+
+- [ ] `npm run doctor` locally lists every auth env var it sees and warns that
+      `NEXTAUTH_URL=http://localhost:3000` is development-only.
+- [ ] `npm run doctor` with `NEXTAUTH_SECRET` unset exits 1 and explains how to
+      generate a secret.
+- [ ] `npm run dev`, then `npm run doctor -- http://localhost:3000` prints a
+      verdict per section (Deployment, Database, Schema, Auth) and no secret
+      values.
+- [ ] `curl -s localhost:3000/api/health | jq` → `status`, `database`, `schema`,
+      `auth.secretConfigured`, `auth.issues[]`; nothing sensitive.
+- [ ] `curl -o /dev/null -w "%{http_code}" "localhost:3000/api/health?strict=1"`
+      → `503` while degraded, `200` when everything is configured.
+- [ ] Sign in with a wrong password → "That email or password is not right."
+- [ ] Unset `NEXTAUTH_SECRET`, restart, try to log in → the message says it is a
+      configuration problem, not a wrong password.
+- [ ] Sign up while `DATABASE_URL` points at a paused project → 503 with
+      "Accounts cannot be created right now…" (not a generic "try again").
+
 ## 8. Production build
 
 ```bash
@@ -210,4 +229,4 @@ npm start   # then re-check a few pages at http://localhost:3000
 ```
 
 - [ ] `npm run build` completes without type errors.
-- [ ] `npm test` shows 105 passing tests.
+- [ ] `npm test` shows 125 passing tests.

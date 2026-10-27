@@ -1,56 +1,111 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  classifyDatabaseError,
+  describeDatabaseTarget,
+  overallStatus,
+  summariseAuthConfig,
+} from "@/lib/health";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Deployment health check.
  *
- *   GET /api/health          → 200 always ("ok" or "degraded")
- *   GET /api/health?strict=1 → 503 when the database is unreachable
+ *   GET /api/health          → 200 always (status "ok" or "degraded")
+ *   GET /api/health?strict=1 → 503 when anything is broken
  *
- * Render/Vercel can poll the plain URL: a restart will not fix a paused
- * database, so the process stays up and the payload tells you what is wrong.
- * No secrets or connection strings are ever included.
+ * It answers the three questions that actually break a deploy:
+ *   1. Is the database reachable?                    → database
+ *   2. Does the database match the code (columns)?    → schema
+ *   3. Is Auth configured for THIS host?              → auth
+ *
+ * No secrets, connection strings or stack traces are ever returned — only
+ * whether something is configured and what to do about it. Safe to leave public
+ * and to point Render/Vercel health checks at.
  */
 export async function GET(req: Request) {
   const strict = new URL(req.url).searchParams.get("strict") === "1";
 
+  // ---- 1. Database reachable -------------------------------------------------
   let database: "up" | "down" = "down";
   let databaseError: string | null = null;
+  let databaseErrorCode: string | null = null;
+  let databaseHint: string | null = null;
 
   try {
     await prisma.$queryRaw`SELECT 1`;
     database = "up";
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // Keep the reason short and free of connection details.
-    if (/tenant\/user .* not found/i.test(message)) {
-      databaseError = "Supabase project not found — is it paused or is the connection string stale?";
-    } else if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|P1001|P1008/i.test(message)) {
-      databaseError = "Database unreachable — check DATABASE_URL and that the database is running.";
-    } else if (/P1000|authentication failed/i.test(message)) {
-      databaseError = "Database rejected the credentials in DATABASE_URL.";
-    } else if (/P2021|does not exist/i.test(message)) {
-      databaseError = "Database reachable but tables are missing — run the migrations.";
-    } else {
-      databaseError = "Database query failed.";
+    const diagnosis = classifyDatabaseError(message);
+    databaseError = diagnosis.problem;
+    databaseErrorCode = diagnosis.code;
+    databaseHint = diagnosis.hint;
+    // Full detail belongs in the platform log, not a public response.
+    console.error(`[health] database ${diagnosis.problem} (${diagnosis.code ?? "no code"}):`, message);
+  }
+
+  // ---- 2. Schema matches the code -------------------------------------------
+  // `SELECT 1` succeeds on an empty database, which is how "healthy" deployments
+  // ended up failing on the first real query. Touch a table and a recent column.
+  let schema: "current" | "missing" | "unknown" = "unknown";
+  let schemaHint: string | null = null;
+
+  if (database === "up") {
+    try {
+      await prisma.user.findFirst({ select: { id: true, referralBonusDays: true } });
+      schema = "current";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const diagnosis = classifyDatabaseError(message);
+      schema = "missing";
+      schemaHint = diagnosis.hint;
+      console.error("[health] schema check failed:", message);
     }
   }
 
-  const ok = database === "up";
+  // ---- 3. Auth configured for this host -------------------------------------
+  const requestHost =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+    req.headers.get("host");
+
+  const auth = summariseAuthConfig({
+    secret: process.env.NEXTAUTH_SECRET,
+    nextAuthUrl: process.env.NEXTAUTH_URL,
+    publicSiteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+    databaseUrl: process.env.DATABASE_URL,
+    requestHost,
+    isProduction: process.env.NODE_ENV === "production",
+  });
+
+  const status = overallStatus({
+    databaseUp: database === "up",
+    authOk: auth.ok,
+    schemaOk: schema === "current",
+  });
+
   const body = {
-    status: ok ? "ok" : "degraded",
+    status,
     service: "kings-body-empire",
     database,
     databaseError,
+    databaseErrorCode,
+    databaseHint,
+    // Connection style only — never the host name or password.
+    databaseTarget: describeDatabaseTarget(process.env.DATABASE_URL),
+    schema,
+    schemaHint,
+    auth,
     // Helpful when debugging a deploy: which build is live.
-    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+    commit:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
       process.env.RENDER_GIT_COMMIT?.slice(0, 7) ??
       null,
     region: process.env.VERCEL_REGION ?? process.env.RENDER_REGION ?? null,
+    environment: process.env.NODE_ENV ?? null,
     timestamp: new Date().toISOString(),
   };
 
-  return NextResponse.json(body, { status: strict && !ok ? 503 : 200 });
+  return NextResponse.json(body, { status: strict && status !== "ok" ? 503 : 200 });
 }

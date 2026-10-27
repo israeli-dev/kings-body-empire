@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "postinstall": "prisma generate",
     "db:check": "tsx scripts/db-check.ts",
+    "doctor": "tsx scripts/doctor.ts",
     "db:setup": "prisma migrate deploy && prisma db seed",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
