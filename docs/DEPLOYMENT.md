@@ -308,8 +308,19 @@ npm run doctor -- https://<service>.onrender.com
 ```
 
 The deployed `/api/health` reports `database`, `databaseError`,
-`databaseErrorCode` and `databaseHint`; the raw Prisma message goes to the
-Render log (`[health] database …`), where you can copy it into a search.
+`databaseErrorCode`, `databaseHint` and `databaseTarget` — the last one naming
+only the **connection style and port** (`supabase-session-pooler` on `5432`,
+`supabase-direct`, `local`, `invalid`…), never the host or password. If the
+deployment says `supabase-direct` while your machine uses the pooler, that is
+your bug. The raw Prisma message goes to the Render log (`[health] database …`).
+
+```bash
+npm run doctor -- https://<service>.onrender.com
+#   connection: supabase-direct on port 5432
+#   ✗ DATABASE_URL uses the direct Supabase host … unreachable from most hosts
+#   ! this machine connects as supabase-session-pooler (:5432) but the
+#     deployment connects as supabase-direct — copy the value that works locally
+```
 
 ### First stop for "it works locally"
 

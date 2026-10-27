@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   classifyDatabaseError,
+  describeDatabaseTarget,
   overallStatus,
   summariseAuthConfig,
 } from "@/lib/health";
@@ -91,6 +92,8 @@ export async function GET(req: Request) {
     databaseError,
     databaseErrorCode,
     databaseHint,
+    // Connection style only — never the host name or password.
+    databaseTarget: describeDatabaseTarget(process.env.DATABASE_URL),
     schema,
     schemaHint,
     auth,

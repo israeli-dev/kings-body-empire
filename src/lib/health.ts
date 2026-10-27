@@ -147,7 +147,9 @@ export function evaluateAuthConfig(input: AuthConfigInput): HealthIssue[] {
 
     // 3. A mismatch with the host actually serving the request is the classic
     //    "login bounces straight back to /login" bug.
-    if (urlHost && requestHost && urlHost !== requestHost) {
+    // Local hosts are interchangeable (localhost vs 127.0.0.1): not a mismatch.
+    const bothLocal = isLocalHostname(urlHost) && isLocalHostname(requestHost);
+    if (urlHost && requestHost && urlHost !== requestHost && !bothLocal) {
       issues.push({
         code: "NEXTAUTH_URL_HOST_MISMATCH",
         severity: "error",
@@ -215,6 +217,70 @@ export type DatabaseProblem =
   | "pgbouncer-prepared-statements"
   | "invalid-url"
   | "unknown";
+
+export type DatabaseTarget = {
+  configured: boolean;
+  /** Which Supabase connection style the URL describes. No hostnames. */
+  kind:
+    | "supabase-session-pooler"
+    | "supabase-transaction-pooler"
+    | "supabase-direct"
+    | "local"
+    | "other"
+    | "invalid"
+    | "none";
+  port: string | null;
+  /** True when the URL points at a hostname that only works over IPv6. */
+  likelyIpv6Only: boolean;
+};
+
+/**
+ * Describes DATABASE_URL *without* revealing it.
+ *
+ * Producing this from a deployment is what turns "database down" into
+ * "you are on the direct host" or "the value is not a URL at all". The host and
+ * password are deliberately never included — only the connection style.
+ */
+export function describeDatabaseTarget(raw: string | null | undefined): DatabaseTarget {
+  if (!raw || !raw.trim()) {
+    return { configured: false, kind: "none", port: null, likelyIpv6Only: false };
+  }
+
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return { configured: true, kind: "invalid", port: null, likelyIpv6Only: false };
+  }
+
+  if (!/^postgres(ql)?:$/.test(url.protocol) || !url.hostname) {
+    return { configured: true, kind: "invalid", port: null, likelyIpv6Only: false };
+  }
+
+  const host = url.hostname.toLowerCase();
+  const port = url.port || "5432";
+
+  if (["localhost", "127.0.0.1", "::1", "host.docker.internal"].includes(host)) {
+    return { configured: true, kind: "local", port, likelyIpv6Only: false };
+  }
+
+  if (host.endsWith(".pooler.supabase.com")) {
+    return {
+      configured: true,
+      kind: port === "6543" ? "supabase-transaction-pooler" : "supabase-session-pooler",
+      port,
+      likelyIpv6Only: false,
+    };
+  }
+
+  if (host.endsWith(".supabase.co")) {
+    // db.<ref>.supabase.co is IPv6-only for newer projects and unreachable from
+    // most hosts (Render included). The pooler is the fix.
+    return { configured: true, kind: "supabase-direct", port, likelyIpv6Only: true };
+  }
+
+  return { configured: true, kind: "other", port, likelyIpv6Only: false };
+}
 
 /**
  * Prisma hides the interesting part in prose, not in the message text.

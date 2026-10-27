@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyDatabaseError,
+  describeDatabaseTarget,
   evaluateAuthConfig,
   extractDiagnosticCode,
   isLocalHostname,
@@ -116,6 +117,17 @@ describe("evaluateAuthConfig", () => {
         }),
       ),
     ).not.toContain("NEXTAUTH_URL_HOST_MISMATCH");
+  });
+
+  it("does not treat localhost and 127.0.0.1 as a host mismatch", () => {
+    const issues = evaluateAuthConfig({
+      secret: SECRET,
+      nextAuthUrl: "http://localhost:3000",
+      databaseUrl: "x",
+      requestHost: "127.0.0.1:3000",
+      isProduction: false,
+    });
+    expect(codes(issues)).not.toContain("NEXTAUTH_URL_HOST_MISMATCH");
   });
 
   it("flags http:// in production and site url drift", () => {
@@ -273,5 +285,65 @@ describe("helpers", () => {
     expect(overallStatus({ databaseUp: true, authOk: true, schemaOk: true })).toBe("ok");
     expect(overallStatus({ databaseUp: true, authOk: true, schemaOk: false })).toBe("degraded");
     expect(overallStatus({ databaseUp: false, authOk: true, schemaOk: true })).toBe("degraded");
+  });
+});
+
+describe("describeDatabaseTarget (no secrets leaked)", () => {
+  const cases: [string, string, string][] = [
+    [
+      "postgresql://postgres.bgzhqlircygoqaergazw:secret@aws-1-eu-west-1.pooler.supabase.com:5432/postgres",
+      "supabase-session-pooler",
+      "5432",
+    ],
+    [
+      "postgresql://postgres.ref:secret@aws-1-eu-west-1.pooler.supabase.com:6543/postgres",
+      "supabase-transaction-pooler",
+      "6543",
+    ],
+    [
+      "postgresql://postgres:secret@db.bgzhqlircygoqaergazw.supabase.co:5432/postgres",
+      "supabase-direct",
+      "5432",
+    ],
+    ["postgresql://postgres:postgres@localhost:5432/kings", "local", "5432"],
+  ];
+
+  it("names the connection style and port", () => {
+    for (const [url, kind, port] of cases) {
+      const target = describeDatabaseTarget(url);
+      expect(target.kind).toBe(kind);
+      expect(target.port).toBe(port);
+      expect(target.configured).toBe(true);
+    }
+  });
+
+  it("flags the IPv6-only direct host", () => {
+    expect(
+      describeDatabaseTarget(
+        "postgresql://postgres:secret@db.ref.supabase.co:5432/postgres",
+      ).likelyIpv6Only,
+    ).toBe(true);
+    expect(
+      describeDatabaseTarget(
+        "postgresql://postgres.ref:secret@aws-1-eu-west-1.pooler.supabase.com:5432/postgres",
+      ).likelyIpv6Only,
+    ).toBe(false);
+  });
+
+  it("catches a quoted or missing value", () => {
+    expect(describeDatabaseTarget('"postgresql://user:pass@host:5432/db"').kind).toBe("invalid");
+    expect(describeDatabaseTarget("").kind).toBe("none");
+    expect(describeDatabaseTarget(undefined).configured).toBe(false);
+  });
+
+  it("never echoes the host, user or password", () => {
+    const payload = JSON.stringify(
+      describeDatabaseTarget(
+        "postgresql://postgres.bgzhqlircygoqaergazw:supersecret@aws-1-eu-west-1.pooler.supabase.com:5432/postgres",
+      ),
+    );
+    expect(payload).not.toContain("supersecret");
+    expect(payload).not.toContain("pooler.supabase.com");
+    expect(payload).not.toContain("bgzhqlircygoqaergazw");
   });
 });

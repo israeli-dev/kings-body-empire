@@ -17,8 +17,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  describeDatabaseTarget,
   evaluateAuthConfig,
   summariseAuthConfig,
+  type DatabaseTarget,
   type HealthIssue,
 } from "../src/lib/health";
 
@@ -35,6 +37,7 @@ const C = {
 type HealthPayload = {
   status?: string;
   database?: string;
+  databaseTarget?: DatabaseTarget;
   databaseError?: string | null;
   databaseErrorCode?: string | null;
   databaseHint?: string | null;
@@ -215,6 +218,40 @@ async function checkRemote(rawUrl: string) {
   );
 
   heading("Database");
+  const remoteTarget = payload.databaseTarget;
+  const localTarget = describeDatabaseTarget(process.env.DATABASE_URL);
+
+  if (remoteTarget) {
+    if (!remoteTarget.configured) {
+      bad("DATABASE_URL is not set on this deployment");
+    } else {
+      console.log(
+        `  ${C.dim}connection:${C.reset} ${remoteTarget.kind}` +
+          (remoteTarget.port ? ` on port ${remoteTarget.port}` : ""),
+      );
+      if (remoteTarget.likelyIpv6Only) {
+        bad(
+          "DATABASE_URL uses the direct Supabase host (db.<ref>.supabase.co), which is IPv6-only for new projects and unreachable from most hosts",
+        );
+        console.log(
+          `      ${C.dim}→ Use the pooler host instead: Supabase → Project Settings → Database → Connection pooling.${C.reset}`,
+        );
+      }
+      if (remoteTarget.kind === "invalid") {
+        bad(
+          "DATABASE_URL is not a valid postgresql:// URL on this deployment (quotes around the value are the usual cause)",
+        );
+      }
+      if (localTarget.configured && localTarget.kind !== remoteTarget.kind) {
+        warn(
+          `this machine connects as ${localTarget.kind} (:${localTarget.port}) but the deployment connects as ${remoteTarget.kind} — copy the value that works locally onto the host.`,
+        );
+      }
+    }
+  } else {
+    warn("this deployment runs an older build without connection details — redeploy from main");
+  }
+
   if (payload.database === "up") {
     ok("reachable");
   } else {
