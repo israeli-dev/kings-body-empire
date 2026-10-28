@@ -12,6 +12,30 @@ Paystack setup.
 
 ---
 
+## What you need from Supabase (and what you don't)
+
+The Supabase dashboard shows four connection details. Only **one** of them goes
+into this app's environment.
+
+| Supabase dashboard item | Needed here? | Where it goes |
+| --- | --- | --- |
+| **Direct connection string** (`postgresql://postgres:[YOUR-PASSWORD]@db.<ref>.supabase.co:5432/postgres`) | **Not for the app** — this host is IPv6-only for newer projects and unreachable from Render/Vercel | Use it only if you have a `psql` client that speaks IPv6 |
+| **Connection pooling → Session pooler** (`…@aws-1-<region>.pooler.supabase.com:5432/postgres`) | **Yes — this is `DATABASE_URL`** | Hosting dashboard → Environment, and your local `.env` |
+| **Connection pooling → Transaction pooler** (`…:6543`) | Works too, but append `?pgbouncer=true&connection_limit=1` | Same |
+| **Project URL** (`https://<ref>.supabase.co`) | No | It is the REST/Auth API endpoint for `supabase-js`, which this app does not use |
+| **Publishable / anon key** (`sb_publishable_…`) | No | Also for `supabase-js`. It is **not** the database password |
+| **Secret / service_role key** | No — and never put it in a `NEXT_PUBLIC_*` variable | — |
+| **CLI setup commands** | No | The schema is owned by Prisma, not the Supabase CLI |
+
+Get the pooler string from **Project Settings → Database → Connection string →
+Connection pooling**, and replace the `[YOUR-PASSWORD]` placeholder with the
+database password (URL-encode `@ # / :` as `%40 %23 %2F %3A`).
+
+`Last migration: No migrations` in the Supabase dashboard refers to **Supabase
+CLI** migrations. This project uses **Prisma** migrations, so that line stays
+empty forever. `npm run db:check` is the authority on whether the schema is
+applied.
+
 ## Before either track
 
 ### 1. Check the production database works
@@ -22,7 +46,10 @@ DATABASE_URL="postgresql://…production…" npm run db:deploy   # create the ta
 DATABASE_URL="postgresql://…production…" npm run db:seed     # admin + catalogue (optional)
 ```
 
-- Use the **direct** connection (Supabase: port 5432) for migrations.
+- Use the **session pooler** (Supabase: `aws-1-<region>.pooler.supabase.com:5432`)
+  for both migrations and the running app. The direct `db.<ref>.supabase.co`
+  host is IPv6-only for newer Supabase projects and often cannot be reached
+  from CI or your laptop's network.
 - If Supabase is asleep/paused, resume it in the dashboard first — `db:check`
   says so explicitly.
 - Seed creates the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Pass them

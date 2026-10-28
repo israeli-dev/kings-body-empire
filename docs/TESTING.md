@@ -201,6 +201,9 @@ With keys (`sk_test_…`):
 
 ## 7b. Deploy doctor and health
 
+- [ ] `DATABASE_URL` uses the Supabase **pooler** host (`*.pooler.supabase.com`),
+      not the direct `db.<ref>.supabase.co` host — `npm run db:check` prints the
+      host it will try.
 - [ ] `npm run doctor` locally lists every auth env var it sees and warns that
       `NEXTAUTH_URL=http://localhost:3000` is development-only.
 - [ ] `npm run doctor` with `NEXTAUTH_SECRET` unset exits 1 and explains how to
