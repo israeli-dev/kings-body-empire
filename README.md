@@ -226,11 +226,10 @@ prisma/
 src/
   app/
     (marketing)/             public site: /, /pricing, /books, /checkout
+                             (page.tsx + landing.css = the landing page)
     (auth)/                  /login, /signup, /forgot-password, /reset-password
     (dashboard)/             signed-in app: /dashboard, /workouts, /food,
                              /measurements, /education, /book-call, /admin
-    (preview)/               /landing-preview — redesigned landing page, not
-                             live at / (route groups cannot share a path)
     api/                     route handlers (auth, logs, rank, calls, paystack…)
       health/                GET /api/health — deploy/database health check
   components/                shared UI (site header/footer, dashboard nav, buy button…)

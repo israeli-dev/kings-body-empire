@@ -61,12 +61,10 @@ describe("app router structure", () => {
     expect(rootLayouts).toEqual(["layout.tsx"]);
   });
 
-  it("resolves the landing page to /", () => {
+  it("serves exactly one landing page, from the marketing group", () => {
     expect(existsSync(join(APP_DIR, "(marketing)", "page.tsx"))).toBe(true);
     expect(routeForFile(join(APP_DIR, "(marketing)", "page.tsx"))).toBe("/");
-    // The redesigned landing page is a preview route, not a second "/".
-    expect(routeForFile(join(APP_DIR, "(preview)", "landing-preview", "page.tsx"))).toBe(
-      "/landing-preview",
-    );
+    // The auth group must not own "/" — that was the original collision.
+    expect(existsSync(join(APP_DIR, "(auth)", "page.tsx"))).toBe(false);
   });
 });

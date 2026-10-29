@@ -59,6 +59,8 @@
 .kbe .pkg-art svg{position:absolute;bottom:0;right:6px;width:70%;opacity:.5;color:var(--gold-dim)}
 .kbe .pkg-body{padding:22px;display:flex;flex-direction:column;gap:12px;flex:1}
 .kbe .pkg-body h3{font-size:19px;font-weight:700}
+.kbe .pkg-price{font-size:22px;font-weight:800;color:var(--gold)}
+.kbe .pkg-price span{font-size:12px;font-weight:600;color:var(--muted);margin-left:3px}
 .kbe .pkg-body ul{display:grid;gap:6px;font-size:13.5px;color:var(--muted);margin-top:2px;list-style:none}
 .kbe .pkg-body li{display:flex;gap:8px;align-items:flex-start}
 .kbe .pkg-body li svg{width:15px;height:15px;color:var(--gold);flex:none;margin-top:3px}
@@ -111,3 +113,8 @@
 .kbe .socials i{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
 .kbe .socials svg{width:14px;height:14px;color:var(--muted)}
 .kbe .foot-bottom{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted)}
+
+.kbe .faq-list{max-width:760px;margin:34px auto 0;display:grid;gap:10px;text-align:left}
+.kbe .faq-item{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+.kbe .faq-item summary{cursor:pointer;font-weight:600;font-size:15px;color:var(--ink)}
+.kbe .faq-item p{margin-top:10px;font-size:14px;color:var(--muted)}
