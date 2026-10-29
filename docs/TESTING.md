@@ -6,7 +6,9 @@ Everything below runs without Paystack keys except step 7.
 ## 1. Public site
 
 - [ ] `/` loads: hero, features, programs, how it works, coach section,
-      education/books teasers, testimonials, FAQ, footer.
+      education/books teasers, FAQ, footer.
+- [ ] No results/testimonials section is rendered anywhere — the home page and
+      the redesigned landing page carry no invented client quotes.
 - [ ] Hero gym photo fills the background behind the headline and the
       dashboard preview card stays readable over it (check on a narrow window
       too — the overlay should keep the text legible).

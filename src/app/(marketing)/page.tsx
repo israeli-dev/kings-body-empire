@@ -7,7 +7,6 @@ import {
   FEATURED_PROGRAMS,
   FEATURES,
   HOW_IT_WORKS,
-  TESTIMONIALS,
 } from "@/lib/content";
 
 export default function HomePage() {
@@ -334,26 +333,6 @@ export default function HomePage() {
               Browse e-books
             </Link>
           </article>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="border-b border-line py-16 sm:py-20">
-        <div className="container-page">
-          <p className="eyebrow">Results</p>
-          <h2 className="section-title mt-3">People who kept showing up</h2>
-          <div className="mt-10 grid gap-5 lg:grid-cols-3">
-            {TESTIMONIALS.map((item) => (
-              <figure key={item.name} className="card">
-                <blockquote className="text-sm leading-relaxed text-ink">
-                  “{item.quote}”
-                </blockquote>
-                <figcaption className="mt-4 text-xs text-muted">
-                  <span className="font-semibold text-ink">{item.name}</span> · {item.detail}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
         </div>
       </section>
 

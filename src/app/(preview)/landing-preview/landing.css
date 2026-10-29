@@ -3,13 +3,13 @@
   --gold:#F5B301; --gold-dim:#8A6607; --ink:#F7F5EF; --muted:#B4AFA4;
   --dark-ink:#181510; --dark-muted:#6B665C;
   background:var(--bg); color:var(--ink);
-  font-family:var(--font-poppins),system-ui,sans-serif;
+  font-family:"Poppins",system-ui,sans-serif;
   line-height:1.55; min-height:100vh; box-sizing:border-box;
   -webkit-font-smoothing:antialiased; overflow-x:hidden;
 }
 .kbe *{box-sizing:inherit;margin:0;padding:0}
 .kbe a{color:inherit;text-decoration:none}
-.kbe .script{font-family:var(--font-caveat),cursive}
+.kbe .script{font-family:"Caveat",cursive}
 .kbe .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 .kbe .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;font-weight:600;font-size:15px;border-radius:6px;border:1px solid transparent;cursor:pointer}
 .kbe .btn-gold{background:var(--gold);color:#1A1300}

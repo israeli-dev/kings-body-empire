@@ -226,9 +226,11 @@ prisma/
 src/
   app/
     (marketing)/             public site: /, /pricing, /books, /checkout
-    (auth)/                  /login, /signup
+    (auth)/                  /login, /signup, /forgot-password, /reset-password
     (dashboard)/             signed-in app: /dashboard, /workouts, /food,
                              /measurements, /education, /book-call, /admin
+    (preview)/               /landing-preview — redesigned landing page, not
+                             live at / (route groups cannot share a path)
     api/                     route handlers (auth, logs, rank, calls, paystack…)
       health/                GET /api/health — deploy/database health check
   components/                shared UI (site header/footer, dashboard nav, buy button…)
@@ -628,5 +630,6 @@ degraded (useful as a real platform health check).
 - No automated E2E tests (Playwright would be the next addition).
 - Rate limiting is not implemented on the auth endpoints; add it (Vercel
   Firewall, Upstash) before a public launch.
-- The three sample testimonials in `src/lib/content.ts` are placeholders —
-  replace them with real, permissioned quotes.
+- There is no social-proof / results section. The earlier sample testimonials
+  were invented, so they were removed rather than shipped; add a case-study
+  section only with real, permissioned client results.

@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { Poppins, Caveat } from "next/font/google";
+import "@fontsource/poppins/400.css";
+import "@fontsource/poppins/500.css";
+import "@fontsource/poppins/600.css";
+import "@fontsource/poppins/700.css";
+import "@fontsource/poppins/800.css";
+import "@fontsource/caveat/600.css";
 import { authOptions } from "@/lib/auth";
 import "./landing.css";
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-poppins",
-});
-const caveat = Caveat({ subsets: ["latin"], weight: ["600"], variable: "--font-caveat" });
 
 /* ---------- small helpers ---------- */
 function Icon({ d, w = 2 }: { d: string; w?: number }) {
@@ -101,19 +99,12 @@ const STEPS = [
   { t: "4. Achieve Your Goals", p: "See your progress, get support, and level up.", d: P.trend },
 ];
 
-// SAMPLE TESTIMONIALS from the design mock-up. Replace with real client feedback before launch.
-const TESTIMONIALS = [
-  { q: "Kings Body Empire changed my life. I lost 10kg, feel stronger and more confident. The tracking and support are amazing!", n: "Emmanuel T.", tag: "Weight Loss Program", i: "ET" },
-  { q: "The programs are well structured and easy to follow. I gained 12kg of lean muscle in 14 weeks!", n: "David O.", tag: "Bulk Up Program", i: "DO" },
-  { q: "The diet guide and videos are super helpful. I've learned so much and I'm now consistent with my workouts and nutrition.", n: "Chioma A.", tag: "Fitness & Diet Books", i: "CA" },
-];
-
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
   const loggedIn = !!session?.user;
 
   return (
-    <div className={`kbe ${poppins.variable} ${caveat.variable}`}>
+    <div className="kbe">
       <header>
         <nav className="wrap">
           <Brand tagline="STRONGER BODIES · HEALTHIER LIVES · GREATER YOU" />
@@ -253,23 +244,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      <div className="testi">
-        <div className="wrap">
-          <h2>What Our Clients Say</h2>
-          <div className="testi-grid">
-            {TESTIMONIALS.map((t) => (
-              <div className="testi-card" key={t.n}>
-                <p>&ldquo;{t.q}&rdquo;</p>
-                <div className="testi-who">
-                  <div className="avatar">{t.i}</div>
-                  <div><b>{t.n}</b><span>{t.tag}</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       <footer>
         <div className="wrap foot-grid">
