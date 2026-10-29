@@ -2,7 +2,21 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { inferredNextAuthUrl } from "./site-url";
 import type { RankName, UserRole } from "@/types";
+
+// NEXTAUTH_URL has to exist and describe this deployment, or NextAuth issues
+// cookies for the wrong host and every login bounces back. Render and Vercel
+// already know the public URL, so adopt it when the variable was forgotten.
+const inferredUrl = inferredNextAuthUrl(process.env);
+if (inferredUrl) {
+  process.env.NEXTAUTH_URL = inferredUrl;
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      `[auth] NEXTAUTH_URL was not set; using ${inferredUrl} from the platform. Set NEXTAUTH_URL explicitly to silence this.`,
+    );
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,

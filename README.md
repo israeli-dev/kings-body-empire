@@ -183,7 +183,7 @@ Seeded accounts (change these before deploying):
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | PostgreSQL connection string used by Prisma |
 | `NEXTAUTH_SECRET` | ✅ | Signs session JWTs. Any long random string |
-| `NEXTAUTH_URL` | ✅ (prod) | Public app URL, e.g. `https://kingsbodyempire.com` |
+| `NEXTAUTH_URL` | ✅ (prod) | Public app URL, e.g. `https://kingsbodyempire.com` — no trailing slash, no path. On Render/Vercel a missing value is inferred from `RENDER_EXTERNAL_URL` / `VERCEL_URL` |
 | `NEXT_PUBLIC_SITE_URL` | recommended | Used for absolute links, metadata and Paystack callbacks |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | seed | The admin account `npm run db:seed` creates |
 | `SEED_DEMO_CLIENT` | optional | `false` skips the demo client account |
