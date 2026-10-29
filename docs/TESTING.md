@@ -5,15 +5,18 @@ Everything below runs without Paystack keys except step 7.
 
 ## 1. Public site
 
-- [ ] `/` loads: hero, features, programs, how it works, coach section,
-      education/books teasers, testimonials, FAQ, footer.
-- [ ] Hero gym photo fills the background behind the headline and the
-      dashboard preview card stays readable over it (check on a narrow window
-      too — the overlay should keep the text legible).
-- [ ] The coach photo appears in the "Coaching that knows your name" section
-      with its caption card at the bottom.
-- [ ] Both images appear instantly on reload (cached) and are not distorted
-      (no stretched faces).
+- [ ] `/` loads the redesigned dark/gold landing page: hero, feature strip,
+      the three programs with naira prices, e-books + education split, how it
+      works, FAQ, footer.
+- [ ] No results/testimonials section is rendered anywhere — the page carries
+      no invented client quotes.
+- [ ] The header nav links (`Programs` → `/pricing`, `Books` → `/books`,
+      `How it works` → `/#how-it-works`, `FAQ` → `/#faq`) all land on a real
+      section or page — the in-page anchors scroll to the matching `id`.
+- [ ] The program cards show the seeded prices (₦20,000 / ₦25,000 / ₦30,000)
+      and every "View details" link opens `/pricing`.
+- [ ] Fonts render as Poppins (body) and Caveat (hero script) with no network
+      request to `fonts.googleapis.com` (they are self-hosted via @fontsource).
 - [ ] Nav links work on mobile (Menu button) and desktop.
 - [ ] **The toolkit** cards (Workout log, Food log, Body measurements, Consistency
       rank) are links: hover shows gold border + arrow, and clicking signed out

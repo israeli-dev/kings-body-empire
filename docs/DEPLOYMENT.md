@@ -273,8 +273,8 @@ reach the app.
 - [ ] Webhook delivers `200` (Paystack dashboard → Webhooks → event log)
 - [ ] Change the seeded admin password; demo client not created
       (`SEED_DEMO_CLIENT=false`)
-- [ ] Replace placeholder testimonials (`src/lib/content.ts`) and e-book
-      `fileUrl`s with real assets
+- [ ] Replace placeholder e-book `fileUrl`s with real assets (the sample
+      testimonials were removed — do not re-add unverified client quotes)
 
 ---
 

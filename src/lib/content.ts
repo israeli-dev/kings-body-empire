@@ -64,27 +64,6 @@ export const HOW_IT_WORKS = [
   },
 ] as const;
 
-export const TESTIMONIALS = [
-  {
-    quote:
-      "Twelve weeks of logging, twelve weeks of showing up. Down 11kg and I finally understand what I am eating.",
-    name: "Ahmed O.",
-    detail: "Transformation program",
-  },
-  {
-    quote:
-      "The consistency rank sounds small until you are one day away from Diamond. It kept me training on the days I wanted to skip.",
-    name: "Chinaza U.",
-    detail: "Elite 1-on-1",
-  },
-  {
-    quote:
-      "Coach mapped my meals around Nigerian food instead of some imported plan I could never keep. That is why it worked.",
-    name: "Tunde A.",
-    detail: "Foundation program",
-  },
-] as const;
-
 export const FAQ = [
   {
     q: "Do I need a gym?",
