@@ -104,6 +104,43 @@ function loadEnvFile(): string | null {
   return null;
 }
 
+/**
+ * Route-group collision check. Folders in parentheses don't appear in the
+ * URL, so `src/app/(auth)/page.tsx` and `src/app/(marketing)/page.tsx` both
+ * claim `/` and Next dies with "You cannot have two parallel pages that
+ * resolve to the same path". That file is never in git (tests/routes.test.ts
+ * guards the repo) — if this fires locally, the extra file is a stray in
+ * your working tree: delete it, don't commit it.
+ */
+function findRouteClashes(): { route: string; files: string[] }[] {
+  const appDir = path.resolve(process.cwd(), "src", "app");
+  if (!fs.existsSync(appDir)) return [];
+  const pageFiles = new Set(["page.tsx", "page.ts", "page.jsx", "page.js"]);
+  const byRoute = new Map<string, string[]>();
+
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.startsWith(".")) continue;
+      const full = path.join(dir, entry);
+      if (fs.statSync(full).isDirectory()) {
+        walk(full);
+      } else if (pageFiles.has(entry)) {
+        const segments = path
+          .relative(appDir, path.dirname(full))
+          .split(path.sep)
+          .filter((s) => s && !(s.startsWith("(") && s.endsWith(")")));
+        const route = `/${segments.join("/")}`.replace(/\/$/, "") || "/";
+        byRoute.set(route, [...(byRoute.get(route) ?? []), path.relative(process.cwd(), full)]);
+      }
+    }
+  };
+  walk(appDir);
+
+  return [...byRoute.entries()]
+    .filter(([, files]) => files.length > 1)
+    .map(([route, files]) => ({ route, files }));
+}
+
 function printIssues(issues: HealthIssue[]) {
   for (const issue of issues) {
     if (issue.severity === "error") bad(`${issue.message}`);
@@ -155,10 +192,33 @@ async function checkLocal() {
     }
   }
 
-  const errors = issues.filter((issue) => issue.severity === "error");
-  if (errors.length > 0) {
+  heading("App routes");
+  const clashes = findRouteClashes();
+  if (clashes.length === 0) {
+    ok("no two pages resolve to the same URL");
+  } else {
+    for (const clash of clashes) {
+      bad(`${clash.route} is defined by ${clash.files.join(" and ")}`);
+      console.log(
+        `      ${C.dim}→ Route groups like (auth) don't appear in the URL. Delete the stray file (it is not part of the repo), then: rm -rf .next && npm run dev${C.reset}`,
+      );
+    }
+  }
+
+  const errors = [
+    ...issues.filter((issue) => issue.severity === "error"),
+    ...clashes.map(
+      (clash): HealthIssue => ({
+        code: "ROUTE_CLASH",
+        severity: "error",
+        message: `${clash.route} is defined by ${clash.files.join(" and ")}`,
+        fix: "Delete the stray page file, then rm -rf .next and restart the dev server.",
+      }),
+    ),
+  ];
+  if (issues.filter((issue) => issue.severity === "error").length > 0) {
     heading("Problems to fix before deploying");
-    printIssues(errors);
+    printIssues(issues.filter((issue) => issue.severity === "error"));
   }
 
   const warnings = issues.filter((issue) => issue.severity === "warn");
