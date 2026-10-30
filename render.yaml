@@ -5,11 +5,21 @@
 # `sync: false` values below (nothing secret is stored in git).
 #
 # Before the first deploy:
-#   1. Run the migrations against your production database from your machine:
-#        DATABASE_URL="<production url>" npm run db:deploy
+#   1. Migrations run automatically on every boot via `npm run start:render`
+#      (prisma migrate deploy && next start), so the tables create themselves
+#      as long as DATABASE_URL below is set. To seed the admin/catalogue, run
+#      once from your machine:
 #        DATABASE_URL="<production url>" npm run db:seed      # optional
-#   2. Set NEXTAUTH_URL / NEXT_PUBLIC_SITE_URL to the URL Render gives you
-#      (you can edit env vars after the service is created and redeploy).
+#   2. NEXTAUTH_URL / NEXT_PUBLIC_SITE_URL are pinned to the live URL below.
+#      If you rename the service or add a custom domain, update BOTH to the
+#      new URL (no trailing slash) and redeploy.
+#
+# WARNING: this file is ONLY read when the service is created via
+# Render Dashboard -> New -> Blueprint. A manually-created Web Service
+# ignores render.yaml completely — no env vars, no generated secret.
+# If you created the service by hand, copy every env var below into
+# Dashboard -> your service -> Environment yourself (see
+# docs/DEPLOYMENT.md, Track B2).
 #
 # Deploying from a branch other than `main`? Change `branch:` below.
 
@@ -25,8 +35,10 @@ services:
     # `npm ci` runs the postinstall hook (prisma generate); `npm run build`
     # runs `prisma generate && next build`.
     buildCommand: npm ci && npm run build
-    # `npm start` is `next start -p ${PORT:-3000}`, so Render's $PORT is honoured.
-    startCommand: npm run start
+    # `start:render` applies pending Prisma migrations, then starts Next
+    # honouring Render's $PORT — a fresh database becomes usable with no
+    # manual migration step.
+    startCommand: npm run start:render
     healthCheckPath: /api/health
 
     envVars:
@@ -43,13 +55,12 @@ services:
       - key: NEXTAUTH_SECRET
         generateValue: true # Render generates a strong secret for you
       - key: NEXTAUTH_URL
-        # Must equal the deployed URL exactly, with no trailing slash:
-        #   https://kings-body-empire.onrender.com
-        # Leave it blank and the app falls back to RENDER_EXTERNAL_URL (Render
-        # sets that automatically), but setting it explicitly is safer.
-        sync: false
+        # Must equal the deployed URL exactly, with no trailing slash.
+        # (The app can fall back to RENDER_EXTERNAL_URL, but explicit wins;
+        # update this if you rename the service or add a custom domain.)
+        value: https://kings-body-empire.onrender.com
       - key: NEXT_PUBLIC_SITE_URL
-        sync: false # same value as NEXTAUTH_URL
+        value: https://kings-body-empire.onrender.com # same value as NEXTAUTH_URL
 
       # ---- Payments (optional) -------------------------------------------
       - key: PAYSTACK_SECRET_KEY

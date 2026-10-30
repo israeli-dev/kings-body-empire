@@ -158,27 +158,52 @@ vercel --prod
 
 ### B2. Manual web service (no Blueprint)
 
+> ⚠️ **A manually-created service ignores `render.yaml` completely.** None of
+> its env vars — including the auto-generated `NEXTAUTH_SECRET` — are applied.
+> That is the #1 cause of "the site loads but auth/database don't connect"
+> (`/api/health` reports `DATABASE_URL … configured:false` and
+> `NEXTAUTH_SECRET_MISSING`, and the logs fill with `[next-auth] NO_SECRET`).
+> If you already created the service by hand, you don't need to recreate it:
+> just add every variable in step 6 under **Dashboard → your service →
+> Environment**, then **Manual Deploy → Deploy latest commit**.
+
 1. **New → Web Service** → connect the repo.
 2. Runtime **Node**, branch **main**, region **Frankfurt** (closest to Lagos).
 3. Build command: `npm ci && npm run build`
-4. Start command: `npm run start` (this honours Render's `$PORT`)
+4. Start command: `npm run start:render` (applies Prisma migrations, then
+   starts Next honouring Render's `$PORT`)
 5. Health check path: `/api/health`
-6. Add the same env vars as the Vercel table, plus
-   `NODE_VERSION=20` and `SEED_DEMO_CLIENT=false`.
-7. Create → wait for the live badge.
+6. **Environment variables** — add all of these by hand:
+
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL` | Supabase **session pooler** string (`…pooler.supabase.com:5432/postgres`), no surrounding quotes |
+   | `NEXTAUTH_SECRET` | output of `openssl rand -base64 32` (any long random string; changing it signs everyone out) |
+   | `NEXTAUTH_URL` | `https://kings-body-empire.onrender.com` — exactly your service URL, **no trailing slash** |
+   | `NEXT_PUBLIC_SITE_URL` | same as `NEXTAUTH_URL` |
+   | `NODE_VERSION` | `20` |
+   | `SEED_DEMO_CLIENT` | `false` |
+   | `NEXT_PUBLIC_TIMEZONE` | `Africa/Lagos` |
+   | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | optional — leave unset to run with checkout disabled |
+   | `RESEND_API_KEY` or `SMTP_URL`, plus `EMAIL_FROM` | optional — without them, password-reset links print in the Render logs |
+
+7. Create / Manual Deploy → wait for the live badge, then verify:
+   `curl https://kings-body-empire.onrender.com/api/health` must return
+   `"status":"ok"`, `"database":"up"`, `"schema":"current"`,
+   `"secretConfigured":true`. Anything else names the missing variable.
+8. Create the admin account once (from your machine, pointing at production):
+   `DATABASE_URL="…production…" ADMIN_EMAIL="you@…" ADMIN_PASSWORD="<strong>" SEED_DEMO_CLIENT="false" npm run db:seed`
 
 ### B3. Migrations on Render
 
-Run them from your machine against the production database (step 1) — safest and
-works on every plan:
+With the start command in B2 (`npm run start:render`), pending migrations are
+applied automatically on every boot, so a fresh database sets itself up. You
+can still run them manually from your machine if you prefer (never run
+`prisma migrate dev` in production):
 
 ```bash
 DATABASE_URL="…production…" npm run db:deploy
 ```
-
-Alternatively add a **Pre-Deploy Command** of `npm run db:deploy` in the service
-settings (paid instances) so every deploy migrates before the new instance
-starts. Never run `prisma migrate dev` in production.
 
 ### Render notes
 
@@ -367,3 +392,32 @@ npm run doctor -- "$DEPLOY_URL" || echo "deployment is not ready"
 
 After changing any environment variable on the host, **redeploy** — `NEXTAUTH_SECRET`
 and `NEXTAUTH_URL` are read when the server starts.
+
+---
+
+## Local troubleshooting
+
+### "You cannot have two parallel pages that resolve to the same path" (`/(auth)/page` vs `/(marketing)/page`)
+
+Route groups — folders in parentheses — don't appear in the URL, so
+`src/app/(auth)/page.tsx` and `src/app/(marketing)/page.tsx` would both claim
+`/`. **The repo does not contain `(auth)/page.tsx`** (`tests/routes.test.ts`
+guards that, and `npm run doctor` checks your working tree). If you see this
+error locally, the extra file is a stray in your workspace — usually created
+by accident in the editor:
+
+```bash
+git status --short                 # the stray page.tsx shows up here
+rm "src/app/(auth)/page.tsx"       # delete the stray, keep (marketing)/page.tsx
+rm -rf .next                       # clear the stale route manifest
+npm ci                             # reinstall exact locked deps (incl. Next)
+npm run doctor                     # should report: no two pages resolve to the same URL
+npm run dev
+```
+
+If `git status` instead shows `(auth)/page.tsx` as a file you edited on
+purpose: the auth group must never own `/` — move that code into
+`(marketing)/page.tsx` or into a real sub-route such as `(auth)/login/`.
+
+A stale install shows up as a wrong Next.js version banner (e.g. `14.2.5`
+when `package.json` asks for `14.2.35`); `npm ci` above fixes that too.
