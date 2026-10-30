@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import "@fontsource/poppins/400.css";
@@ -7,7 +8,9 @@ import "@fontsource/poppins/700.css";
 import "@fontsource/poppins/800.css";
 import "@fontsource/caveat/600.css";
 import { authOptions } from "@/lib/auth";
+import { GymSlideshow } from "@/components/gym-slideshow";
 import { FAQ, FEATURED_PROGRAMS } from "@/lib/content";
+import { GYM_SLIDES, PROGRAM_IMAGES } from "@/lib/gym-slides";
 import { formatNaira } from "@/lib/money";
 import "./landing.css";
 
@@ -106,19 +109,7 @@ export default async function HomePage() {
               <span className="play"><i>&#9654;</i> Watch Our Intro Video</span>
             </div>
           </div>
-          <div className="hero-visual">
-            <div className="hero-script script">
-              Discipline<br />Builds<br />Freedom
-              <svg className="crown-sm" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M2 8l4 3 6-7 6 7 4-3-2 11H4L2 8z" />
-              </svg>
-            </div>
-            <svg viewBox="0 0 200 260" fill="none" stroke="currentColor" strokeWidth="4" style={{ color: "var(--gold)" }} aria-hidden="true">
-              <path d="M70 40c0-16 14-28 30-28s30 12 30 28-14 26-30 26-30-10-30-26z" />
-              <path d="M45 90c10-14 30-20 55-20s45 6 55 20c8 12 10 30 6 46l-8 30c-3 12-2 26 4 40l6 14H37l6-14c6-14 7-28 4-40l-8-30c-4-16-2-34 6-46z" />
-              <path d="M45 92c-14 4-24 16-26 34M155 92c14 4 24 16 26 34" />
-            </svg>
-          </div>
+          <GymSlideshow slides={GYM_SLIDES} variant="hero" ariaLabel="Kings Body Empire training highlights" />
         </div>
       </section>
 
@@ -146,12 +137,24 @@ export default async function HomePage() {
           <div className="pkg-grid">
             {FEATURED_PROGRAMS.map((program) => (
               <div className="pkg" key={program.slug}>
-                <div className="pkg-art">
-                  <svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
-                    <circle cx="50" cy="30" r="14" />
-                    <path d="M20 95c0-25 13-40 30-40s30 15 30 40z" />
-                  </svg>
-                </div>
+                {PROGRAM_IMAGES[program.slug] ? (
+                  <div className="pkg-art-photo">
+                    <Image
+                      src={PROGRAM_IMAGES[program.slug].src}
+                      alt={PROGRAM_IMAGES[program.slug].alt}
+                      fill
+                      sizes="(min-width: 760px) 33vw, 92vw"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="pkg-art">
+                    <svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
+                      <circle cx="50" cy="30" r="14" />
+                      <path d="M20 95c0-25 13-40 30-40s30 15 30 40z" />
+                    </svg>
+                  </div>
+                )}
                 <div className="pkg-body">
                   <h3>{program.title}</h3>
                   <p className="pkg-price">
@@ -166,6 +169,20 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="gallery" id="gallery">
+        <div className="wrap">
+          <div className="gallery-head">
+            <div className="sec-head">
+              <div className="eyebrow">INSIDE THE EMPIRE</div>
+              <h2>Real People. <span style={{ color: "var(--gold)" }}>Real Work.</span></h2>
+              <p>This is what training at Kings Body Empire looks like — strength, conditioning, community and coaching, in and out of the gym.</p>
+            </div>
+            <Link className="btn btn-gold" href={loggedIn ? "/workouts" : "/signup"}>Start Training &nbsp;&rarr;</Link>
+          </div>
+          <GymSlideshow slides={GYM_SLIDES} variant="wide" ariaLabel="Inside Kings Body Empire — gym photo gallery" />
         </div>
       </section>
 
