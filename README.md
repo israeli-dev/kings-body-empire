@@ -195,7 +195,8 @@ Seeded accounts (change these before deploying):
 | `NEXT_PUBLIC_WHATSAPP_URL` / `NEXT_PUBLIC_INSTAGRAM_URL` | optional | Footer links; leave blank to hide |
 | `NEXT_PUBLIC_TIMEZONE` | optional | Timezone used for streaks/ranks (default `Africa/Lagos`) |
 | `CLOUDINARY_URL` | optional | Where you host e-book PDFs / covers — the app never reads file bytes; paste the URLs at `/admin/books` |
-| `CONSULTATION_NOTIFY_EMAIL` | optional | Inbox that receives a full email for every Book a Home Visit request (defaults to `ADMIN_EMAIL`, then `NEXT_PUBLIC_SUPPORT_EMAIL`) |
+| `CONSULTATION_NOTIFY_EMAIL` | optional | Inbox that receives a full email for every Book a Home Visit request (defaults to `NEXT_PUBLIC_SUPPORT_EMAIL`, which itself defaults to `kingsbodyempire@gmail.com`) |
+| `NEXT_PUBLIC_SPECIALIST_WHATSAPP_URL` | optional | WhatsApp line notified about specialist bookings — the booking success screen opens a prefilled `wa.me` chat to it (default `https://wa.me/2348165617018`) |
 
 ---
 
@@ -268,9 +269,11 @@ Diabetologist / Endocrinologist, Neurologist) — from the landing page section
   charged online — there is no Paystack path for this flow.
 - Every request is stored as a `ConsultationRequest` (status starts as
   `PENDING`) and the studio inbox gets a full email via `sendMail`
-  (`CONSULTATION_NOTIFY_EMAIL`). Email failures are logged, never fatal —
-  the client always sees a confirmation plus a “Notify the clinic on WhatsApp”
-  shortcut.
+  (`CONSULTATION_NOTIFY_EMAIL`, defaults to `kingsbodyempire@gmail.com`).
+  Email failures are logged, never fatal — the client always sees a
+  confirmation plus a “Notify the clinic on WhatsApp” shortcut that opens a
+  prefilled chat to `NEXT_PUBLIC_SPECIALIST_WHATSAPP_URL`
+  (default `https://wa.me/2348165617018`).
 - There is intentionally no admin queue: pending requests are answered by
   phone/WhatsApp; the client sees their own history on `/book-visit`.
 

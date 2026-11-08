@@ -9,9 +9,13 @@ import { resolveSiteUrl } from "./site-url";
 export const siteUrl = resolveSiteUrl(process.env);
 
 export const supportEmail =
-  process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "hello@kingsbodyempire.com";
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "kingsbodyempire@gmail.com";
 
 export const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "";
+
+/** WhatsApp line used for Book a Home Visit (specialist) notifications. */
+export const specialistWhatsappUrl =
+  process.env.NEXT_PUBLIC_SPECIALIST_WHATSAPP_URL || "https://wa.me/2348165617018";
 
 export const instagramUrl = process.env.NEXT_PUBLIC_INSTAGRAM_URL || "";
 

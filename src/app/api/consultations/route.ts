@@ -24,10 +24,10 @@ export const dynamic = "force-dynamic";
 
 const NINETY_DAYS_MS = 150 * 24 * 60 * 60 * 1000;
 
+// Consultation requests go to the studio inbox: CONSULTATION_NOTIFY_EMAIL when
+// set, otherwise the public support email (kingsbodyempire@gmail.com by default).
 const NOTIFY_EMAIL =
-  process.env.CONSULTATION_NOTIFY_EMAIL?.trim() ||
-  process.env.ADMIN_EMAIL?.trim() ||
-  supportEmail;
+  process.env.CONSULTATION_NOTIFY_EMAIL?.trim() || supportEmail;
 
 /** GET — the signed-in client's own consultation requests, newest first. */
 export async function GET() {

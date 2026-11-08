@@ -13,7 +13,7 @@ import {
   type ConsultationSpecialty,
 } from "@/lib/consultation-core";
 import { SpecialtyIcon, specialtyAccent } from "@/components/consultation-icons";
-import { whatsappUrl } from "@/lib/env";
+import { specialistWhatsappUrl } from "@/lib/env";
 
 type RequestRow = {
   id: string;
@@ -186,9 +186,9 @@ function BookVisitContent() {
     const notifyText = `Hi Kings Body Empire! I just requested a ${detail.label} session (${modeLabel(
       done.mode,
     )}) for ${preferredLabel}. My name is on the request — reference ${done.id.slice(-6)}.`;
-    const notifyHref = whatsappUrl
-      ? `${whatsappUrl}${whatsappUrl.includes("?") ? "&" : "?"}text=${encodeURIComponent(notifyText)}`
-      : null;
+    const notifyHref = `${specialistWhatsappUrl}${
+      specialistWhatsappUrl.includes("?") ? "&" : "?"
+    }text=${encodeURIComponent(notifyText)}`;
 
     return (
       <div className="mx-auto max-w-2xl space-y-6">

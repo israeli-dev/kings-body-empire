@@ -69,10 +69,17 @@ services:
       # ---- Branding / behaviour ------------------------------------------
       - key: NEXT_PUBLIC_TIMEZONE
         value: Africa/Lagos
+      # Public contact email shown on the site; also the consultation inbox default.
       - key: NEXT_PUBLIC_SUPPORT_EMAIL
-        sync: false
+        value: kingsbodyempire@gmail.com
       - key: NEXT_PUBLIC_WHATSAPP_URL
-        sync: false
+        value: https://wa.me/2348165617018
+      # WhatsApp line that gets notified about specialist bookings.
+      - key: NEXT_PUBLIC_SPECIALIST_WHATSAPP_URL
+        value: https://wa.me/2348165617018
+      # Inbox for consultation request emails. Default: NEXT_PUBLIC_SUPPORT_EMAIL.
+      - key: CONSULTATION_NOTIFY_EMAIL
+        value: kingsbodyempire@gmail.com
       - key: NEXT_PUBLIC_INSTAGRAM_URL
         sync: false
       # Never create the demo client on a public deployment.
