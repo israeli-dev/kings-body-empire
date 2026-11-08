@@ -113,18 +113,26 @@ export const GYM_SLIDES: GymSlide[] = [
   },
 ];
 
-/** Photos used on the three featured-program cards (by program slug). */
+/** Photos used on the featured-program cards (by program slug). */
 export const PROGRAM_IMAGES: Record<string, { src: string; alt: string }> = {
-  foundation: {
+  "gain-10kg": {
+    src: "/images/gym/iron-roots.jpg",
+    alt: "Athlete standing by a loaded barbell at an outdoor gym, ready to build mass",
+  },
+  "lose-10kg-fat": {
     src: "/images/gym/cardio-conditioning.jpg",
-    alt: "Beginner-friendly conditioning training in a gym",
+    alt: "High-knees conditioning drills for fat loss in a gym",
   },
-  transformation: {
-    src: "/images/gym/squat-strong.jpg",
-    alt: "Woman strength training with a barbell",
+  "massive-chest-home": {
+    src: "/images/gym/empire-push-ups.jpg",
+    alt: "Athletes doing push-ups together on an outdoor training floor",
   },
-  "elite-1-on-1": {
+  "premium-1-on-1": {
     src: "/images/gym/mirror-work.jpg",
-    alt: "Athlete training one-on-one style cable work in front of a mirror",
+    alt: "Coach watching an athlete's form during cable work in front of a mirror",
+  },
+  "hourglass-shape": {
+    src: "/images/gym/sculpt-and-strength.jpg",
+    alt: "Woman performing targeted glute and leg work under blue gym lighting",
   },
 };

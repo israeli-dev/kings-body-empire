@@ -13,10 +13,15 @@ export type SessionUser = {
 
 /** The signed-in user, or null. Never throws. */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as SessionUser | undefined;
-  if (!user?.id) return null;
-  return user;
+  try {
+    const session = await getServerSession(authOptions);
+    const user = session?.user as SessionUser | undefined;
+    if (!user?.id) return null;
+    return user;
+  } catch {
+    // e.g. NEXTAUTH_SECRET missing on a fresh deploy — the page renders as signed out.
+    return null;
+  }
 }
 
 export function unauthorized() {

@@ -23,9 +23,9 @@ PostgreSQL · NextAuth (credentials) · Paystack**.
 | Education library (admin adds YouTube/MP4 lessons, category filter, player) | ✅ |
 | Paystack checkout: initialise → browser callback → webhook, idempotent "paid" marking | ✅ |
 | Gated e-book downloads (file URL never appears in page HTML) | ✅ |
-| Admin console (`/admin`) with revenue, purchases and calls | ✅ |
+| Admin console (`/admin`) with revenue, purchases and calls, plus an e-book catalogue manager (`/admin/books`) | ✅ |
 | Seed script (admin + demo client, programs, e-books, lessons, call slots) | ✅ |
-| Tests (61 unit + flow tests), ESLint, `tsc --noEmit` | ✅ |
+| Tests (150 unit + flow tests), ESLint, `tsc --noEmit` | ✅ |
 
 Payments are optional: with no Paystack keys the app runs fine and simply tells
 buyers that checkout is not configured yet.
@@ -192,7 +192,7 @@ Seeded accounts (change these before deploying):
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | optional | Shown in the footer |
 | `NEXT_PUBLIC_WHATSAPP_URL` / `NEXT_PUBLIC_INSTAGRAM_URL` | optional | Footer links; leave blank to hide |
 | `NEXT_PUBLIC_TIMEZONE` | optional | Timezone used for streaks/ranks (default `Africa/Lagos`) |
-| `CLOUDINARY_URL` | optional | Where you host e-book PDFs / thumbnails (nothing reads it yet) |
+| `CLOUDINARY_URL` | optional | Where you host e-book PDFs / covers — the app never reads file bytes; paste the URLs at `/admin/books` |
 
 ---
 
@@ -226,13 +226,14 @@ prisma/
 src/
   app/
     (marketing)/             public site: /, /pricing, /books, /checkout
-                             (page.tsx + landing.css = the landing page)
     (auth)/                  /login, /signup, /forgot-password, /reset-password
-    (dashboard)/             signed-in app: /dashboard, /workouts, /food,
-                             /measurements, /education, /book-call, /admin
+    (dashboard)/             signed-in app: /home, /dashboard, /workouts, /food,
+                             /measurements, /education, /book-call, /admin, /admin/books
     api/                     route handlers (auth, logs, rank, calls, paystack…)
       health/                GET /api/health — deploy/database health check
-  components/                shared UI (site header/footer, dashboard nav, buy button…)
+  components/                shared UI (site header/footer, dashboard nav, buy button,
+                             landing-page.tsx + landing.css = the shared landing page
+                             rendered at / (public) and /home (signed in))
   lib/
     auth.ts                  NextAuth options (JWT sessions, role + rank in token)
     api.ts                   session helpers + JSON error responses
@@ -375,7 +376,7 @@ Events handled (log in Paystack → Webhooks to replay a missed one):
 
 | Event | Effect locally |
 | --- | --- |
-| `charge.success` | marks the matching purchase `PAID` |
+| `charge| `charge.success` | marks the matching purchase `PAID` |
 | `subscription.create` | writes `Subscription` (code, email token, next payment date) |
 | `subscription.not_renew` / `.disable` | `NON_RENEWING` / `CANCELLED` — access kept to period end |
 | `subscription.enable` | back to `ACTIVE` |
@@ -439,7 +440,7 @@ on mobile data.
 Rules worth knowing:
 
 - Days are grouped in `NEXT_PUBLIC_TIMEZONE` (`Africa/Lagos`), so a 10pm
-  session counts as today.
+ counts as today.
 - Weight keeps **one point per day** (the last reading wins) so seven weigh-ins
   on one day do not look like seven days of progress.
 - Training volume is `sets × reps × load`; bodyweight sets count as
@@ -623,12 +624,14 @@ degraded (useful as a real platform health check).
 
 ## Known limitations / next steps
 
-- No password reset or email verification yet (NextAuth credentials only).
+- No email verification yet (password reset IS implemented — see `/forgot-password`).
 - No image/file upload — e-books are URLs (Cloudinary or any host), lessons are
-  YouTube or direct video links.
+  YouTube or direct video links. Manage the e-book catalogue (title, price, file
+  and cover links) at `/admin/books`.
 - No automated E2E tests (Playwright would be the next addition).
 - Rate limiting is not implemented on the auth endpoints; add it (Vercel
   Firewall, Upstash) before a public launch.
 - There is no social-proof / results section. The earlier sample testimonials
   were invented, so they were removed rather than shipped; add a case-study
   section only with real, permissioned client results.
+results.

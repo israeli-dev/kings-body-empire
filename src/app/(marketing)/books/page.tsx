@@ -14,14 +14,21 @@ export const dynamic = "force-dynamic";
 export default async function BooksPage() {
   const user = await getCurrentUser();
 
-  const [books, ownedIds] = await Promise.all([
-    prisma.book.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
-    user
-      ? prisma.bookPurchase
-          .findMany({ where: { userId: user.id, status: "PAID" }, select: { bookId: true } })
-          .then((rows) => rows.map((row) => row.bookId))
-      : Promise.resolve<string[]>([]),
-  ]);
+  let books: Awaited<ReturnType<typeof prisma.book.findMany>> | null = null;
+  let ownedIds: string[] = [];
+
+  try {
+    [books, ownedIds] = await Promise.all([
+      prisma.book.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
+      user
+        ? prisma.bookPurchase
+            .findMany({ where: { userId: user.id, status: "PAID" }, select: { bookId: true } })
+            .then((rows) => rows.map((row) => row.bookId))
+        : Promise.resolve<string[]>([]),
+    ]);
+  } catch (error) {
+    console.error("[books] Could not load e-books:", error);
+  }
 
   return (
     <div className="container-page py-16">
@@ -34,12 +41,18 @@ export default async function BooksPage() {
         </p>
       </div>
 
+      {books === null && (
+        <p className="alert-info mt-10">
+          The e-book catalogue could not be loaded right now. Please refresh in a moment.
+        </p>
+      )}
+
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {books.map((book) => {
+        {(books ?? []).map((book) => {
           const owned = ownedIds.includes(book.id);
           return (
             <article key={book.id} className="overflow-hidden rounded-2xl border border-line bg-panel">
-              <div className="flex aspect-[4/3] items-center justify-center bg-panel-fade text-4xl">
+              <div className="flex aspect-[3/4] items-center justify-center overflow-hidden bg-panel-fade text-4xl">
                 {book.coverUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -60,6 +73,11 @@ export default async function BooksPage() {
                 {book.description && (
                   <p className="mt-2 line-clamp-3 text-sm text-muted">{book.description}</p>
                 )}
+                {!book.fileUrl && (
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-gold">
+                    Link coming soon
+                  </p>
+                )}
                 <div className="mt-5 flex items-center justify-between">
                   <span className="text-lg font-semibold text-gold">
                     {formatNaira(book.priceKobo)}
@@ -74,7 +92,7 @@ export default async function BooksPage() {
         })}
       </div>
 
-      {books.length === 0 && (
+      {books !== null && books.length === 0 && (
         <p className="card mt-10 text-sm text-muted">
           No e-books published yet. Run <code className="text-gold">npm run db:seed</code> to add
           the starter catalogue.

@@ -117,6 +117,7 @@ export default async function AdminPage() {
       <div className="flex flex-wrap gap-3">
         <Link href="/education" className="btn-secondary btn-sm">Add a lesson</Link>
         <Link href="/book-call" className="btn-secondary btn-sm">Add availability</Link>
+        <Link href="/admin/books" className="btn-secondary btn-sm">Manage e-books</Link>
         <Link href="/pricing" className="btn-secondary btn-sm">View programs</Link>
         <span className="text-xs text-muted">
           {packageCount} programs · {bookCount} e-books · {lessonCount} lessons

@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { EDUCATION_CATEGORIES } from "@/lib/content";
 
 type Item = {
@@ -44,11 +46,26 @@ function Player({ url }: { url: string }) {
 }
 
 export default function EducationPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted">Loading lessons…</p>}>
+      <EducationLibrary />
+    </Suspense>
+  );
+}
+
+function EducationLibrary() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const searchParams = useSearchParams();
+
+  const requestedCategory = searchParams.get("category");
+  const initialFilter =
+    requestedCategory && (EDUCATION_CATEGORIES as readonly string[]).includes(requestedCategory)
+      ? requestedCategory
+      : "All";
 
   const [items, setItems] = useState<Item[]>([]);
-  const [filter, setFilter] = useState<string>("All");
+  const [filter, setFilter] = useState<string>(initialFilter);
   const [selected, setSelected] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -125,7 +142,12 @@ export default function EducationPage() {
             Short lessons on diet, training, fat loss, bulking and rest.
           </p>
         </div>
-        <span className="text-xs text-muted">{items.length} lessons</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-muted">{items.length} lessons</span>
+          <Link href="/book-call" className="btn-primary btn-sm">
+            📅 Book a consultation with a fitness coach
+          </Link>
+        </div>
       </header>
 
       {isAdmin && (

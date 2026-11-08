@@ -134,9 +134,10 @@ export default function BookCallPage() {
     <div className="mx-auto max-w-3xl space-y-8">
       <header>
         <p className="eyebrow">Coaching</p>
-        <h1 className="mt-2 text-3xl font-semibold">Book a fitness call</h1>
+        <h1 className="mt-2 text-3xl font-semibold">Book a consultation with a fitness coach</h1>
         <p className="mt-2 text-sm text-muted">
-          A 30-minute video or phone call to review your training, food and next block.
+          A 30-minute video or phone call to review your training, food and next block — and to
+          pick a program that fits your goal.
         </p>
       </header>
 

@@ -18,13 +18,20 @@ export const dynamic = "force-dynamic";
 export default async function PricingPage() {
   const user = await getCurrentUser();
 
-  const [packages, ownedIds] = await Promise.all([
-    prisma.package.findMany({
-      where: { isActive: true },
-      orderBy: { priceKobo: "asc" },
-    }),
-    user ? packageIdsWithAccess(user.id) : Promise.resolve<string[]>([]),
-  ]);
+  let packages: Awaited<ReturnType<typeof prisma.package.findMany>> | null = null;
+  let ownedIds: string[] = [];
+
+  try {
+    [packages, ownedIds] = await Promise.all([
+      prisma.package.findMany({
+        where: { isActive: true },
+        orderBy: { priceKobo: "asc" },
+      }),
+      user ? packageIdsWithAccess(user.id) : Promise.resolve<string[]>([]),
+    ]);
+  } catch (error) {
+    console.error("[pricing] Could not load programs:", error);
+  }
 
   const paymentsOn = paymentsEnabled();
 
@@ -49,10 +56,17 @@ export default async function PricingPage() {
         </p>
       )}
 
+      {packages === null && (
+        <p className="alert-error mt-8">
+          The programs catalogue could not be loaded right now. Please refresh in a moment — if it
+          persists, contact support.
+        </p>
+      )}
+
       <div className="mt-10 grid gap-5 lg:grid-cols-3">
-        {packages.map((pkg, index) => {
+        {(packages ?? []).map((pkg) => {
           const owned = ownedIds.includes(pkg.id);
-          const featured = index === 1;
+          const featured = pkg.slug === "gain-10kg";
 
           return (
             <article
@@ -110,7 +124,7 @@ export default async function PricingPage() {
         })}
       </div>
 
-      {packages.length === 0 && (
+      {packages !== null && packages.length === 0 && (
         <p className="card mt-10 text-sm text-muted">
           No programs published yet. Seed the database with{" "}
           <code className="text-gold">npm run db:seed</code> to get the starter catalogue.

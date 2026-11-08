@@ -27,5 +27,11 @@ export async function GET(
     return NextResponse.redirect(absoluteUrl(`/books/${params.slug}?locked=1`));
   }
 
+  // The file link has not been uploaded yet — send the buyer back to the
+  // book page, which explains the situation, instead of a broken redirect.
+  if (!book.fileUrl) {
+    return NextResponse.redirect(absoluteUrl(`/books/${params.slug}?unavailable=1`));
+  }
+
   return NextResponse.redirect(book.fileUrl);
 }
