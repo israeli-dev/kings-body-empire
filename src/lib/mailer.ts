@@ -219,3 +219,84 @@ export function referralRewardEmail(input: {
 
   return { to: "", subject, text, html };
 }
+
+/** Sent to the studio inbox when someone books a home-visit / remote consultation. */
+export function consultationRequestEmail(input: {
+  studioName: string;
+  clientName: string;
+  clientEmail: string;
+  phone: string;
+  specialtyLabel: string;
+  modeLabel: string;
+  address: string | null;
+  preferredAtLabel: string;
+  notes: string | null;
+  feeLabel: string;
+  requestId: string;
+}): MailMessage {
+  const subject = `New consultation request — ${input.specialtyLabel} (${input.modeLabel})`;
+
+  const text = [
+    `A new consultation request just came in on ${input.studioName}.`,
+    "",
+    `Specialty:  ${input.specialtyLabel}`,
+    `Mode:       ${input.modeLabel}`,
+    `When:       ${input.preferredAtLabel}`,
+    `Phone:      ${input.phone}`,
+    `Client:     ${input.clientName} (${input.clientEmail})`,
+    input.address ? `Address:    ${input.address}` : "Address:    — (remote)",
+    `Notes:      ${input.notes ?? "—"}`,
+    "",
+    `Fee: ${input.feeLabel} — payable on the call or during the home visit (no online payment collected).`,
+    `Reference: ${input.requestId}`,
+    "",
+    `Reply to the client at ${input.clientEmail} or call ${input.phone} to confirm.`,
+  ].join("\n");
+
+  const row = (label: string, value: string) => `
+      <tr>
+        <td style="padding:8px 0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#8A6607;width:110px;vertical-align:top;">${label}</td>
+        <td style="padding:8px 0;font-size:14px;color:#F7F5EF;">${value}</td>
+      </tr>`;
+
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const html = `<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#0E0C0A;padding:32px 16px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#171410;border:1px solid #2C251C;border-radius:16px;">
+      <tr>
+        <td style="padding:28px 28px 4px;">
+          <p style="margin:0;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#F5B301;">Kings Body Empire · Home Visit</p>
+          <h1 style="margin:12px 0 0;font-size:22px;color:#F7F5EF;font-weight:600;">${esc(input.specialtyLabel)}</h1>
+          <p style="margin:8px 0 0;font-size:13px;color:#A79F94;">${esc(input.modeLabel)} · ${esc(input.preferredAtLabel)}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 28px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${row("Client", `${esc(input.clientName)}<br /><a href="mailto:${esc(input.clientEmail)}" style="color:#F5B301;text-decoration:none;">${esc(input.clientEmail)}</a>`)}
+            ${row("Phone", `<a href="tel:${esc(input.phone)}" style="color:#F5B301;text-decoration:none;">${esc(input.phone)}</a>`)}
+            ${row("Mode", esc(input.modeLabel))}
+            ${input.address ? row("Address", esc(input.address)) : ""}
+            ${row("Preferred", esc(input.preferredAtLabel))}
+            ${row("Fee", `${esc(input.feeLabel)} — on the call / at the visit`)}
+            ${row("Notes", input.notes ? esc(input.notes) : "—")}
+            ${row("Reference", esc(input.requestId))}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px 28px 24px;">
+          <p style="margin:0;font-size:12px;line-height:1.6;color:#A79F94;">
+            Call or WhatsApp the client to confirm. No online payment was collected — the fee is paid on the call or during the visit.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  return { to: "", subject, text, html };
+}

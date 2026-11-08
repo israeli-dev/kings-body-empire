@@ -98,11 +98,13 @@ Project → **Settings → Environment Variables**. Add each for **Production**
 | `NEXT_PUBLIC_SITE_URL` | same as `NEXTAUTH_URL` |
 | `PAYSTACK_SECRET_KEY` | `sk_live_…` (or `sk_test_…` to trial it) |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | `pk_live_…` |
-| `NEXT_PUBLIC_SUPPORT_EMAIL` | your real support email |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | your real support email (e.g. `kingsbodyempire@gmail.com`) |
 | `NEXT_PUBLIC_TIMEZONE` | `Africa/Lagos` |
 | `RESEND_API_KEY` | `re_…` — enables password-reset emails (or set `SMTP_URL`) |
 | `EMAIL_FROM` | verified sender, e.g. `Kings Body Empire <no-reply@your-domain.com>` |
 | `NEXT_PUBLIC_WHATSAPP_URL` | `https://wa.me/234…` (optional) |
+| `NEXT_PUBLIC_SPECIALIST_WHATSAPP_URL` | WhatsApp line notified about specialist bookings (default `https://wa.me/2348165617018`) |
+| `CONSULTATION_NOTIFY_EMAIL` | Inbox for consultation request emails (default: the support email) |
 | `NEXT_PUBLIC_INSTAGRAM_URL` | your profile URL (optional) |
 
 > **Why the pooler?** Vercel runs many short-lived functions. The session

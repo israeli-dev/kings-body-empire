@@ -5,6 +5,13 @@ import { FAQ, FEATURED_PROGRAMS } from "@/lib/content";
 import { GYM_SLIDES, PROGRAM_IMAGES } from "@/lib/gym-slides";
 import { formatNaira } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import {
+  CONSULTATION_FEE_LABEL,
+  SPECIALTY_DETAILS,
+  SPECIALTY_GROUPS,
+  specialtiesInGroup,
+} from "@/lib/consultation-core";
+import { SpecialtyIcon, specialtyTone } from "@/components/consultation-icons";
 
 /* ---------- small helpers ---------- */
 function Icon({ d, w = 2 }: { d: string; w?: number }) {
@@ -280,6 +287,48 @@ export async function LandingPage({ loggedIn }: { loggedIn: boolean }) {
         </div>
       </div>
 
+      <section className="visit" id="home-visit">
+        <div className="wrap">
+          <div className="visit-head">
+            <div>
+              <div className="eyebrow">DOCTOR-LED · ANYWHERE IN NIGERIA</div>
+              <h2>Book a Home Visit</h2>
+              <p className="visit-sub">
+                One flat fee for a 1-on-1 session — video/phone from wherever you are, or a doctor
+                at your doorstep. Fitness, nutrition and specialist medical reviews, all
+                doctor-led. No payment until the session happens.
+              </p>
+            </div>
+            <div className="visit-fee">
+              <span className="visit-fee-label">Flat fee</span>
+              <strong>{CONSULTATION_FEE_LABEL}</strong>
+              <span className="visit-fee-note">Pay on the call or at the visit</span>
+            </div>
+          </div>
+
+          {SPECIALTY_GROUPS.map((group) => (
+            <div className="visit-group" key={group}>
+              <p className="visit-group-title">{group}</p>
+              <div className="visit-grid">
+                {specialtiesInGroup(group).map((key) => {
+                  const detail = SPECIALTY_DETAILS[key];
+                  return (
+                    <Link className="visit-card" key={key} href={`/book-visit?specialty=${key}`}>
+                      <span className={`visit-icon ${specialtyTone(key)}`}>
+                        <SpecialtyIcon specialty={key} />
+                      </span>
+                      <span className="visit-label">{detail.label}</span>
+                      <span className="visit-blurb">{detail.blurb}</span>
+                      <span className="visit-cta">Book this visit &rarr;</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="how" id="how-it-works">
         <div className="wrap">
           <h2>How It Works</h2>
@@ -294,6 +343,7 @@ export async function LandingPage({ loggedIn }: { loggedIn: boolean }) {
             ))}
           </div>
         </div>
+      </section>
 
       <section className="faq" id="faq">
         <div className="wrap">
@@ -310,7 +360,6 @@ export async function LandingPage({ loggedIn }: { loggedIn: boolean }) {
             ))}
           </div>
         </div>
-      </section>
       </section>
     </div>
   );
