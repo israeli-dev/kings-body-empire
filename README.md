@@ -2,7 +2,8 @@
 
 Fitness coaching platform: daily training/food/measurement logging, a
 Bronze→Diamond consistency rank, 1-on-1 call booking, paid coaching programs
-and e-books (Paystack), plus an education video library.
+and e-books (Paystack), book-a-home-visit medical/fitness consultations, plus
+an education video library.
 
 Built with **Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma +
 PostgreSQL · NextAuth (credentials) · Paystack**.
@@ -20,6 +21,7 @@ PostgreSQL · NextAuth (credentials) · Paystack**.
 | Consistency rank engine (Bronze, Silver, Gold, Diamond) + streak | ✅ |
 | Client dashboard with week grid, recent activity, purchases | ✅ |
 | Call booking (admin publishes slots, client books with phone + note, cancel frees the slot, race-safe) | ✅ |
+| Book a Home Visit (`/book-visit`): video/phone or physical visit anywhere in Nigeria, Fitness/Health specialties, ₦20,000 flat fee paid on the call, email alert to the studio | ✅ |
 | Education library (admin adds YouTube/MP4 lessons, category filter, player) | ✅ |
 | Paystack checkout: initialise → browser callback → webhook, idempotent "paid" marking | ✅ |
 | Gated e-book downloads (file URL never appears in page HTML) | ✅ |
@@ -193,6 +195,7 @@ Seeded accounts (change these before deploying):
 | `NEXT_PUBLIC_WHATSAPP_URL` / `NEXT_PUBLIC_INSTAGRAM_URL` | optional | Footer links; leave blank to hide |
 | `NEXT_PUBLIC_TIMEZONE` | optional | Timezone used for streaks/ranks (default `Africa/Lagos`) |
 | `CLOUDINARY_URL` | optional | Where you host e-book PDFs / covers — the app never reads file bytes; paste the URLs at `/admin/books` |
+| `CONSULTATION_NOTIFY_EMAIL` | optional | Inbox that receives a full email for every Book a Home Visit request (defaults to `ADMIN_EMAIL`, then `NEXT_PUBLIC_SUPPORT_EMAIL`) |
 
 ---
 
@@ -228,7 +231,8 @@ src/
     (marketing)/             public site: /, /pricing, /books, /checkout
     (auth)/                  /login, /signup, /forgot-password, /reset-password
     (dashboard)/             signed-in app: /home, /dashboard, /workouts, /food,
-                             /measurements, /education, /book-call, /admin, /admin/books
+                             /measurements, /education, /book-call, /book-visit, /admin,
+                             /admin/books
     api/                     route handlers (auth, logs, rank, calls, paystack…)
       health/                GET /api/health — deploy/database health check
   components/                shared UI (site header/footer, dashboard nav, buy button,
@@ -242,12 +246,35 @@ src/
     rank.ts                  rank reads/writes against the database
     paystack.ts              Paystack API client (initialise + verify)
     paystack-signature.ts    webhook HMAC verification (unit tested)
+    consultation-core.ts     home-visit specialties, flat fee, mode guards (shared client/server)
     purchases.ts             purchase lookup / idempotent "mark paid"
     content.ts               marketing copy and categories
 tests/                       Vitest unit tests
 docs/TESTING.md              manual QA checklist
 docs/DEPLOYMENT.md           Vercel + Paystack go-live guide
 ```
+
+## Book a Home Visit
+
+Members can request a 1-on-1 session with one of six specialties — Fitness
+(Fitness Coach, Dietician, Nutritionist) or Health (Cardiologist,
+Diabetologist / Endocrinologist, Neurologist) — from the landing page section
+(`/#home-visit`) or the dedicated `/book-visit` page.
+
+- The client picks specialty, mode and time. Mode is either **Video / phone**
+  (address never collected) or **Home visit** (address required; no geographic
+  limit — anywhere in Nigeria).
+- Fee is a flat **₦20,000**, payable on the call or at the visit. Nothing is
+  charged online — there is no Paystack path for this flow.
+- Every request is stored as a `ConsultationRequest` (status starts as
+  `PENDING`) and the studio inbox gets a full email via `sendMail`
+  (`CONSULTATION_NOTIFY_EMAIL`). Email failures are logged, never fatal —
+  the client always sees a confirmation plus a “Notify the clinic on WhatsApp”
+  shortcut.
+- There is intentionally no admin queue: pending requests are answered by
+  phone/WhatsApp; the client sees their own history on `/book-visit`.
+
+---
 
 ## Password reset
 

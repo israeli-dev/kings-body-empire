@@ -21,6 +21,7 @@ export function SiteFooter() {
           <ul className="mt-3 space-y-2 text-sm text-muted">
             <li><Link href="/pricing" className="hover:text-ink">Programs</Link></li>
             <li><Link href="/books" className="hover:text-ink">E-books</Link></li>
+            <li><Link href="/book-visit" className="hover:text-ink">Book a home visit</Link></li>
             <li><Link href="/signup" className="hover:text-ink">Create account</Link></li>
             <li><Link href="/login" className="hover:text-ink">Log in</Link></li>
           </ul>

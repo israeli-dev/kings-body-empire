@@ -58,6 +58,33 @@ enum SubscriptionStatus {
   COMPLETE
 }
 
+/// Home-visit / remote consultations offered by the doctor-led side of the
+/// platform. Flat fee; payment is collected on the call or at the visit, so
+/// there is no `paystackRef` — booking is a request, not a charge.
+enum ConsultationSpecialty {
+  FITNESS_COACH
+  DIETICIAN
+  NUTRITIONIST
+  CARDIOLOGIST
+  DIABETOLOGIST_ENDOCRINOLOGIST
+  NEUROLOGIST
+}
+
+enum ConsultationMode {
+  /// Video or phone call from home.
+  VIDEO
+  /// The doctor/coach travels to the client's address.
+  HOME_VISIT
+}
+
+enum ConsultationStatus {
+  /// Request received — the studio confirms by phone/WhatsApp.
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -86,6 +113,7 @@ model User {
   callBookings     CallBooking[]
   resetTokens      PasswordResetToken[]
   subscriptions    Subscription[]
+  consultationRequests ConsultationRequest[]
 }
 
 /// Single-use, hashed password-reset tokens. Only a SHA-256 hash is stored, so
@@ -306,4 +334,27 @@ model CallBooking {
   createdAt DateTime          @default(now())
 
   @@index([userId])
+}
+
+/// A home-visit / remote consultation request. The fee is flat (₦20,000) and
+/// paid on the call or at the visit — no online charge is taken.
+model ConsultationRequest {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialty   ConsultationSpecialty
+  mode        ConsultationMode
+  phone       String
+  /// Required when mode = HOME_VISIT (enforced in the API), optional for VIDEO.
+  address     String?
+  preferredAt DateTime
+  notes       String?
+  /// Always ₦20,000 today; stored per-row for a possible future price change.
+  amountKobo  Int                   @default(2000000)
+  status      ConsultationStatus    @default(PENDING)
+  createdAt   DateTime              @default(now())
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([preferredAt])
 }

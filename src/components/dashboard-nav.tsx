@@ -19,6 +19,7 @@ const LINKS = [
   { href: "/progress", label: "Progress" },
   { href: "/education", label: "Education" },
   { href: "/book-call", label: "Book a call" },
+  { href: "/book-visit", label: "Home visit" },
 ];
 
 export function DashboardNav({ initialRank }: { initialRank: RankName }) {
