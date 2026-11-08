@@ -11,6 +11,7 @@ import { LogoutButton } from "./logout-button";
 import type { RankName } from "@/types";
 
 const LINKS = [
+  { href: "/home", label: "Home" },
   { href: "/dashboard", label: "Overview" },
   { href: "/workouts", label: "Workouts" },
   { href: "/food", label: "Food" },
@@ -62,7 +63,7 @@ export function DashboardNav({ initialRank }: { initialRank: RankName }) {
     <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
       <div className="container-page flex h-16 items-center justify-between gap-4">
         <div className="flex items-center gap-6">
-          <Logo href="/dashboard" />
+          <Logo href="/home" />
           <nav className="hidden items-center gap-1 lg:flex">
             {links.map((link) => {
               const active = pathname === link.href;

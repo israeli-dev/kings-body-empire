@@ -248,7 +248,10 @@ model Book {
   slug        String         @unique
   description String?
   priceKobo   Int
-  fileUrl     String
+  /// Link to the actual PDF/e-book file (Cloudinary or any host). Null until
+  /// the admin pastes the link — the book then shows as "Coming soon" instead
+  /// of a broken download.
+  fileUrl     String?
   coverUrl    String?
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())

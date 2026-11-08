@@ -9,7 +9,7 @@ import { REFERRAL_COOKIE, normaliseReferralCode } from "@/lib/referrals-core";
 export function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") || "/home";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

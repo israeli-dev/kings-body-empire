@@ -4,6 +4,7 @@ import { REFERRAL_COOKIE, cookieMaxAgeSeconds, normaliseReferralCode } from "@/l
 
 /** Everything under these paths needs a signed-in session. */
 const PROTECTED = [
+  "/home",
   "/dashboard",
   "/workouts",
   "/food",

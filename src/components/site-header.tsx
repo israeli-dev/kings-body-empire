@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Logo } from "./logo";
 
 const LINKS = [
@@ -13,6 +14,8 @@ const LINKS = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const { data: session } = useSession();
+  const loggedIn = Boolean(session?.user);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line/80 bg-bg/85 backdrop-blur">
@@ -28,12 +31,25 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link href="/login" className="btn-ghost">
-            Log in
-          </Link>
-          <Link href="/signup" className="btn-primary">
-            Start free
-          </Link>
+          {loggedIn ? (
+            <>
+              <Link href="/home" className="btn-ghost">
+                Home
+              </Link>
+              <Link href="/dashboard" className="btn-primary">
+                Dashboard
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="btn-ghost">
+                Log in
+              </Link>
+              <Link href="/signup" className="btn-primary">
+                Start free
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -61,12 +77,25 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2">
-              <Link href="/login" className="btn-secondary flex-1" onClick={() => setOpen(false)}>
-                Log in
-              </Link>
-              <Link href="/signup" className="btn-primary flex-1" onClick={() => setOpen(false)}>
-                Start free
-              </Link>
+              {loggedIn ? (
+                <>
+                  <Link href="/home" className="btn-secondary flex-1" onClick={() => setOpen(false)}>
+                    Home
+                  </Link>
+                  <Link href="/dashboard" className="btn-primary flex-1" onClick={() => setOpen(false)}>
+                    Dashboard
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="btn-secondary flex-1" onClick={() => setOpen(false)}>
+                    Log in
+                  </Link>
+                  <Link href="/signup" className="btn-primary flex-1" onClick={() => setOpen(false)}>
+                    Start free
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

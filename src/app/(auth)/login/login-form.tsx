@@ -9,7 +9,7 @@ import { loginErrorMessage } from "@/lib/auth-errors";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") || "/home";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

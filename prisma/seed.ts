@@ -21,82 +21,122 @@ const DEMO_CLIENT = {
   password: "ClientPass123!",
 };
 
+// The catalogue shown everywhere in the app. Prices here are the ones Paystack
+// actually charges (monthly, via Paystack Plans created on first checkout).
 const PACKAGES = [
   {
-    slug: "foundation",
-    title: "Foundation",
-    durationWeeks: 4,
-    priceKobo: 2_000_000, // ₦20,000
-    description:
-      "Four weeks to build the habit. A training plan you can finish, a food template built around Nigerian meals and one check-in a week.",
-    contents: [
-      "4-week training plan (gym or home)",
-      "Nigerian food template with portions",
-      "Weekly check-in and rank review",
-      "WhatsApp support",
-    ],
-  },
-  {
-    slug: "transformation",
-    title: "Transformation",
+    slug: "gain-10kg",
+    title: "Gain 10kg in 12 Weeks",
     durationWeeks: 12,
-    priceKobo: 2_500_000, // ₦25,000
+    priceKobo: 5_000_000, // ₦50,000/month
     description:
-      "The full programme. Progressive training blocks, meal planning and coaching on consistency — the boring part that actually works.",
+      "Twelve weeks to put on 10 kilograms the Nigerian way — progressive training, calorie-dense local meals and weekly check-ins that keep you accountable.",
     contents: [
-      "12 weeks of progressive training blocks",
-      "Custom calorie and protein targets",
-      "Fortnightly video calls",
-      "Form review on lifts",
+      "12-week progressive training block (gym or home)",
+      "Custom calorie & protein targets from your stats",
+      "Calorie-dense Nigerian bulk meals with portions",
+      "Weekly check-in and rank review",
       "Priority WhatsApp support",
     ],
   },
   {
-    slug: "elite-1-on-1",
-    title: "Elite 1-on-1",
-    durationWeeks: 8,
-    priceKobo: 3_000_000, // ₦30,000
+    slug: "lose-10kg-fat",
+    title: "Lose 10kg of Fat in 16 Weeks",
+    durationWeeks: 16,
+    priceKobo: 5_000_000, // ₦50,000/month
     description:
-      "Direct access to the coach. A plan built around your body, your schedule and your kitchen, adjusted every two weeks.",
+      "Sixteen weeks to drop 10 kilograms of fat — a calorie target built around the food you already eat, conditioning that fits in your day and a weekly scale review.",
+    contents: [
+      "16-week fat-loss block (gym or home)",
+      "Calorie target built around Nigerian meals",
+      "High-satiety meal plans with portions",
+      "3 strength days + 2 conditioning sessions weekly",
+      "Weekly weigh-in and rank review",
+    ],
+  },
+  {
+    slug: "massive-chest-home",
+    title: "Build a Huge & Massive Chest at Home in 8 Weeks",
+    durationWeeks: 8,
+    priceKobo: 2_500_000, // ₦25,000/month
+    description:
+      "Eight weeks of push-up progression — feet-elevated, archer, pseudo-planche — for a chest that fills any shirt, with zero equipment.",
+    contents: [
+      "8-week home chest block (zero equipment)",
+      "Push-up progression: incline → archer → pseudo-planche",
+      "Volume chart and rest-pyramid progression built in",
+      "Upper- and lower-chest finisher circuits",
+      "Form-check videos reviewed weekly",
+    ],
+  },
+  {
+    slug: "premium-1-on-1",
+    title: "Premium 1-on-1 Coaching (Video Call Available)",
+    durationWeeks: 12,
+    priceKobo: 15_000_000, // ₦150,000/month
+    description:
+      "The full bespoke experience — a plan built around your body, your schedule and your kitchen, with weekly video calls and unlimited check-ins.",
     contents: [
       "Fully bespoke training programme",
-      "Weekly 1-on-1 calls",
-      "Unlimited form reviews",
-      "Travel and event week plans",
-      "Direct line to the coach",
+      "Weekly 1-on-1 video calls",
+      "Unlimited check-ins and form reviews",
+      "Travel, event and holiday week plans",
+      "Direct line to the coach, 7 days a week",
+    ],
+  },
+  {
+    slug: "hourglass-shape",
+    title: "Build an Hourglass Shape",
+    durationWeeks: 16,
+    priceKobo: 5_000_000, // ₦50,000/month
+    description:
+      "Sixteen weeks to sculpt the hourglass — glute-and-waist training, waist-friendly nutrition and progress photos every four weeks so you watch the curve come in.",
+    contents: [
+      "16-week shape-focused training block",
+      "Glute & waist sculpting (hip thrusts, oblique work, side planks)",
+      "Waist-snatching nutrition: protein-first, fibre-rich",
+      "Progress photos every 4 weeks, coached feedback",
+      "Weekly check-in and rank review",
     ],
   },
 ];
 
+/// Old starter programs — retired, not deleted, so historical subscriptions
+/// and purchases still resolve.
+const RETIRED_PACKAGE_SLUGS = ["foundation", "transformation", "elite-1-on-1"];
+
+// The e-book catalogue. `fileUrl` is intentionally left out for now — the
+// coach will paste the Cloudinary link from the admin page once each file is
+// ready; until then the books list as "Coming soon" and cannot be bought.
 const BOOKS = [
   {
-    slug: "the-kings-kitchen",
-    title: "The King's Kitchen",
+    slug: "bulk-up-10kg-nigerian-way",
+    title: "How to Bulk-Up by 10kg in 8 Weeks — the Nigerian Way",
     description:
-      "Forty Nigerian meals with calories and protein per serving, plus a two-week cutting plan you can cook on a Sunday.",
-    priceKobo: 750_000,
-    fileUrl:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "The exact 8-week mass-gain system for Nigerian lifters: progressive training, calorie-dense local meals and a weekly weigh-in protocol that puts 10 clean kilograms on you.",
+    priceKobo: 800_000, // ₦8,000
+    coverUrl: "/images/books/bulk-up-nigerian.jpg",
   },
   {
-    slug: "hypertrophy-blueprint",
-    title: "Hypertrophy Blueprint",
+    slug: "super-bulk-up-diet",
+    title: "Super Bulk-Up Diet (Full Recipe Included)",
     description:
-      "The 12-week upper/lower block that builds size with four sessions a week — including deload rules and progression targets.",
-    priceKobo: 1_000_000,
-    fileUrl:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "The complete bulk-up diet built around Nigerian kitchens — full recipes, calorie and protein counts per plate, and a two-week shopping list to go with it.",
+    priceKobo: 200_000, // ₦2,000
+    coverUrl: "/images/books/bulk-up-diet.jpg",
   },
   {
-    slug: "cut-without-crashing",
-    title: "Cut Without Crashing",
+    slug: "the-ultimate-skin-regiment",
+    title: "The Ultimate Skin Regiment",
     description:
-      "How to drop fat without losing your strength, your sleep or your mind. Includes the refeed protocol and travel weeks.",
-    priceKobo: 850_000,
-    fileUrl:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "A simple, effective daily skin routine — cleanse, treat, moisturise and protect — built for Nigerian skin and humidity, with a weekly shopping list.",
+    priceKobo: 200_000, // ₦2,000
+    coverUrl: "/images/books/skin-regiment.jpg",
   },
 ];
+
+/// Old placeholder e-books — retired, not deleted, so purchase history stays valid.
+const RETIRED_BOOK_SLUGS = ["the-kings-kitchen", "hypertrophy-blueprint", "cut-without-crashing"];
 
 const LESSONS = [
   {
@@ -176,7 +216,11 @@ async function main() {
       create: { ...pkg, billingInterval: "MONTHLY" },
     });
   }
-  console.log(`✓ ${PACKAGES.length} programs ready`);
+  const retiredPackages = await prisma.package.updateMany({
+    where: { slug: { in: RETIRED_PACKAGE_SLUGS } },
+    data: { isActive: false },
+  });
+  console.log(`✓ ${PACKAGES.length} programs ready (${retiredPackages.count} old programs retired)`);
 
   for (const book of BOOKS) {
     await prisma.book.upsert({
@@ -185,13 +229,17 @@ async function main() {
         title: book.title,
         description: book.description,
         priceKobo: book.priceKobo,
-        fileUrl: book.fileUrl,
+        coverUrl: book.coverUrl,
         isActive: true,
       },
       create: book,
     });
   }
-  console.log(`✓ ${BOOKS.length} e-books ready`);
+  const retiredBooks = await prisma.book.updateMany({
+    where: { slug: { in: RETIRED_BOOK_SLUGS } },
+    data: { isActive: false },
+  });
+  console.log(`✓ ${BOOKS.length} e-books ready (${retiredBooks.count} old e-books retired)`);
 
   const lessonCount = await prisma.educationContent.count();
   if (lessonCount === 0) {

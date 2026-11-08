@@ -9,7 +9,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login?callbackUrl=%2Fdashboard");
+  if (!user) redirect("/login?callbackUrl=%2Fhome");
 
   return (
     <div className="flex min-h-screen flex-col">
