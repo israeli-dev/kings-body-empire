@@ -18,6 +18,21 @@ if (inferredUrl) {
   }
 }
 
+// A missing secret cannot be papered over: NextAuth answers every auth
+// request with a cryptic NO_SECRET stack trace, and the real fix (set the
+// env var) is invisible in it. Say it once, plainly, at startup instead.
+// Note a manually-created Render service ignores render.yaml entirely —
+// including its `generateValue` secret — so this is the first thing to
+// check when a hand-made service "is not connecting to auth".
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error(
+    "[auth] NEXTAUTH_SECRET is not set — sign-in/sign-up will fail (NO_SECRET). " +
+      "Set NEXTAUTH_SECRET in the hosting dashboard (Render -> your service -> Environment) " +
+      "to the output of `openssl rand -base64 32`, then redeploy. " +
+      "Locally, copy .env.example to .env and set it there.",
+  );
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
