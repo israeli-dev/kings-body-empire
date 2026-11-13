@@ -25,7 +25,7 @@ PostgreSQL · NextAuth (credentials) · Paystack**.
 | Education library (admin adds YouTube/MP4 lessons, category filter, player) | ✅ |
 | Paystack checkout: initialise → browser callback → webhook, idempotent "paid" marking | ✅ |
 | Gated e-book downloads (file URL never appears in page HTML) | ✅ |
-| Admin console (`/admin`) with revenue, purchases and calls, plus an e-book catalogue manager (`/admin/books`) | ✅ |
+| Admin console (`/admin`) with revenue, purchases and calls, plus an e-book catalogue manager (`/admin/books`) and a searchable user/role manager (`/admin/coaches`) | ✅ |
 | Seed script (admin + demo client, programs, e-books, lessons, call slots) | ✅ |
 | Tests (150 unit + flow tests), ESLint, `tsc --noEmit` | ✅ |
 
@@ -233,7 +233,7 @@ src/
     (auth)/                  /login, /signup, /forgot-password, /reset-password
     (dashboard)/             signed-in app: /home, /dashboard, /workouts, /food,
                              /measurements, /education, /book-call, /book-visit, /admin,
-                             /admin/books
+                             /admin/books, /admin/coaches
     api/                     route handlers (auth, logs, rank, calls, paystack…)
       health/                GET /api/health — deploy/database health check
   components/                shared UI (site header/footer, dashboard nav, buy button,
@@ -657,7 +657,10 @@ degraded (useful as a real platform health check).
 - No email verification yet (password reset IS implemented — see `/forgot-password`).
 - No image/file upload — e-books are URLs (Cloudinary or any host), lessons are
   YouTube or direct video links. Manage the e-book catalogue (title, price, file
-  and cover links) at `/admin/books`.
+  and cover links) at `/admin/books`. Promote any user to coach (and step them
+  back down to client) at `/admin/coaches` — search by name or email first.
+  Note that a user's current session keeps their old role until they sign in
+  again, because the role lives in the JWT.
 - No automated E2E tests (Playwright would be the next addition).
 - Rate limiting is not implemented on the auth endpoints; add it (Vercel
   Firewall, Upstash) before a public launch.

@@ -20,7 +20,7 @@ export default async function AdminPage() {
   if (!user) redirect("/login?callbackUrl=%2Fadmin");
   if (user.role !== "ADMIN") redirect("/dashboard");
 
-  const [users, packagePurchases, bookPurchases, bookings, counts, subscriptions, activeSubscriptions, pastDueCount] = await Promise.all([
+  const [users, packagePurchases, bookPurchases, bookings, counts, subscriptions, activeSubscriptions, pastDueCount, coaches, coachCount] = await Promise.all([
     prisma.user.count(),
     prisma.packagePurchase.findMany({
       include: {
@@ -63,6 +63,13 @@ export default async function AdminPage() {
       select: { amountKobo: true },
     }),
     prisma.subscription.count({ where: { status: "PAST_DUE" } }),
+    prisma.user.findMany({
+      where: { role: "COACH" },
+      select: { id: true, name: true, email: true, rank: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.user.count({ where: { role: "COACH" } }),
   ]);
 
   const revenueKobo = [...packagePurchases, ...bookPurchases]
@@ -90,6 +97,7 @@ export default async function AdminPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Clients", value: users.toString() },
+          { label: "Coaches", value: coachCount.toString() },
           { label: "Revenue (paid)", value: formatNaira(revenueKobo) },
           { label: "Workout logs", value: workoutCount.toString() },
           { label: "Meals logged", value: foodCount.toString() },
@@ -115,6 +123,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
+        <Link href="/admin/coaches" className="btn-primary btn-sm">Make someone a coach</Link>
         <Link href="/education" className="btn-secondary btn-sm">Add a lesson</Link>
         <Link href="/book-call" className="btn-secondary btn-sm">Add availability</Link>
         <Link href="/admin/books" className="btn-secondary btn-sm">Manage e-books</Link>
@@ -123,6 +132,36 @@ export default async function AdminPage() {
           {packageCount} programs · {bookCount} e-books · {lessonCount} lessons
         </span>
       </div>
+
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Coaches</h2>
+          <Link href="/admin/coaches" className="btn-secondary btn-sm">Search &amp; make coach →</Link>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Search any user by name or email and promote them to coach. Coaches keep their own
+          login and history — only their role changes.
+        </p>
+        <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-panel">
+          {coaches.map((coach: { id: string; name: string; email: string }) => (
+            <li key={coach.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+              <div>
+                <p className="text-sm font-medium">{coach.name}</p>
+                <p className="text-xs text-muted">{coach.email}</p>
+              </div>
+              <span className="tag border-success/40 bg-success/10 text-success">Coach</span>
+            </li>
+          ))}
+          {coaches.length === 0 && (
+            <li className="px-5 py-6 text-sm text-muted">
+              No coaches yet.{" "}
+              <Link href="/admin/coaches" className="text-gold hover:underline">
+                Search for a user and make them a coach →
+              </Link>
+            </li>
+          )}
+        </ul>
+      </section>
 
       <section>
         <h2 className="text-lg font-semibold">Subscriptions</h2>
